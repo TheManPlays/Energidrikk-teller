@@ -371,14 +371,6 @@
         <button id="reset-all-btn" class="danger">Fjern alt</button>
       </div>
 
-      <!-- Vennestats -->
-      <div class="card" style="margin-bottom: 16px;">
-        <h2>Vennestats</h2>
-        <p id="friend-stats-text" class="price-note">
-          Laster vennestats...
-        </p>
-      </div>
-
       <div>
         <span class="pill">
           <span class="pill-dot"></span>
@@ -512,7 +504,6 @@
 
     const priceSummaryTotal = document.getElementById("price-summary-total");
     const resetAllBtn = document.getElementById("reset-all-btn");
-    const friendStatsText = document.getElementById("friend-stats-text");
 
     /***********************
      * 4. Tilstand         *
@@ -555,16 +546,6 @@
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
       return year + "-" + String(month).padStart(2, "0");
-    }
-
-    function shortEmail(email) {
-      if (!email) return "(ukjent)";
-      if (email.length <= 30) return email;
-      const parts = email.split("@");
-      if (parts.length !== 2) return email.slice(0, 27) + "...";
-      const user = parts[0];
-      const domain = parts[1];
-      return user.slice(0, 10) + "…" + "@" + domain;
     }
 
     function renderDrinkList() {
@@ -871,90 +852,8 @@
       saveToLocal();
     }
 
-    /***********************
-     * 8. Vennestats       *
-     ***********************/
-    async function loadFriendStats() {
-      if (!friendStatsText) return;
-
-      if (!currentUser || !currentUser.uid) {
-        friendStatsText.textContent = "Logg inn for å se vennestats.";
-        return;
-      }
-
-      friendStatsText.textContent = "Laster vennestats...";
-
-      try {
-        const snap = await db.collection("users").get();
-        const users = [];
-        let yourTotal = 0;
-
-        snap.forEach(function (docSnap) {
-          const data = docSnap.data() || {};
-          let total = 0;
-
-          if (data.counts && typeof data.counts === "object") {
-            for (const key in data.counts) {
-              if (Object.prototype.hasOwnProperty.call(data.counts, key)) {
-                const v = data.counts[key];
-                if (typeof v === "number" && v > 0) {
-                  total += v;
-                }
-              }
-            }
-          }
-
-          users.push({
-            id: docSnap.id,
-            email: data.email || "",
-            total: total
-          });
-
-          if (docSnap.id === currentUser.uid) {
-            yourTotal = total;
-          }
-        });
-
-        if (users.length === 0) {
-          friendStatsText.textContent = "Ingen brukere funnet ennå.";
-          return;
-        }
-
-        users.sort((a, b) => b.total - a.total);
-
-        const yourIndex = users.findIndex(u => u.id === currentUser.uid);
-        const yourRank = yourIndex === -1 ? null : yourIndex + 1;
-
-        const nonZeroUsers = users.filter(u => u.total > 0);
-        const top = nonZeroUsers[0];
-
-        if (!top) {
-          friendStatsText.textContent = "Ingen har logget enheter ennå. Du blir den første!";
-          return;
-        }
-
-        let text = "Du har totalt " + yourTotal + " enheter logget. ";
-
-        if (yourRank != null) {
-          text += "Du er på plass " + yourRank + " av " + users.length + " brukere. ";
-        }
-
-        const topName =
-          top.id === currentUser.uid
-            ? "deg selv"
-            : shortEmail(top.email || "ukjent bruker");
-
-        text += "Toppen er " + topName + " med " + top.total + " enheter.";
-
-        friendStatsText.textContent = text;
-      } catch (e) {
-        console.error("Kunne ikke laste vennestats:", e);
-        friendStatsText.textContent = "Kunne ikke laste vennestats.";
-      }
-    }
-
     /****************************
-     * 9. +1 / -1 og Fjern alt  *
+     * 8. +1 / -1 og Fjern alt  *
      ****************************/
     async function addDrink(brandId, flavorId, delta) {
       if (!currentUser || !currentUser.uid) return;
@@ -974,7 +873,6 @@
       updateMonthlyChart(monthlyStats);
       saveToLocal();
       await saveUserDataToServer();
-      await loadFriendStats();
     }
 
     if (resetAllBtn) {
@@ -990,12 +888,11 @@
         updateMonthlyChart(monthlyStats);
         saveToLocal();
         await saveUserDataToServer();
-        await loadFriendStats();
       });
     }
 
     /*****************************
-     * 10. Innlogging/registrering *
+     * 9. Innlogging/registrering *
      *****************************/
     registerForm.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -1059,8 +956,6 @@
         ) {
           await saveUserDataToServer();
         }
-
-        await loadFriendStats();
       } else {
         authSection.classList.remove("hidden");
         appSection.classList.add("hidden");
@@ -1071,9 +966,6 @@
         totalUnits = 0;
         recalculateTotalsFromCounts();
         updateMonthlyChart(monthlyStats);
-        if (friendStatsText) {
-          friendStatsText.textContent = "Logg inn for å se vennestats.";
-        }
       }
     });
   </script>
