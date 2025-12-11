@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <title>Energidrikk-teller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background-color: #020617;
+      color: #e5e7eb;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      margin: 24px;
+      padding: 24px;
+      border-radius: 16px;
+      background: radial-gradient(circle at top left, #1d4ed8 0, #020617 55%);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.5);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(148,163,184,0.4);
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin-top: 0;
+      margin-bottom: 8px;
+      font-size: 1.9rem;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 1.3rem;
+    }
+
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 1.1rem;
+    }
+
+    p {
+      margin: 0 0 8px 0;
+    }
+
+    .subtitle {
+      color: #9ca3af;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background-color: rgba(15,23,42,0.9);
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid rgba(75,85,99,0.8);
+      box-sizing: border-box;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      margin-bottom: 4px;
+      color: #cbd5f5;
+    }
+
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #4b5563;
+      background-color: #020617;
+      color: #e5e7eb;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 1px #3b82f6;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: #0b1120;
+      font-weight: 600;
+      transition: transform 0.08s ease-out, box-shadow 0.08s ease-out, filter 0.1s ease-out;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(34,197,94,0.45);
+      filter: brightness(1.05);
+    }
+
+    button:active {
+      transform: translateY(0);
+      box-shadow: none;
+      filter: brightness(0.95);
+    }
+
+    button.secondary {
+      background: rgba(15,23,42,0.9);
+      color: #e5e7eb;
+      border: 1px solid #4b5563;
+      box-shadow: none;
+    }
+
+    button.secondary:hover {
+      box-shadow: 0 4px 10px rgba(15,23,42,0.8);
+    }
+
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .error {
+      color: #fecaca;
+      font-size: 0.85rem;
+      min-height: 1.2em;
+      margin-top: 6px;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .welcome {
+      font-size: 0.9rem;
+      color: #cbd5f5;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background-color: rgba(15,23,42,0.9);
+      border: 1px solid #374151;
+      color: #e5e7eb;
+      margin-bottom: 10px;
+    }
+
+    .pill-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #22c55e 0, #16a34a 45%, #166534 100%);
+    }
+
+    .brand {
+      margin-bottom: 12px;
+      padding: 10px;
+      border-radius: 10px;
+      background-color: #020617;
+      border: 1px solid #1f2937;
+    }
+
+    .brand-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .brand-name {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    .brand-total {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    .flavor-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      border-top: 1px dashed #1f2937;
+      font-size: 0.9rem;
+      gap: 8px;
+    }
+
+    .flavor-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .flavor-name {
+      font-weight: 500;
+    }
+
+    .flavor-count {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    .flavor-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .price-line {
+      font-size: 0.9rem;
+      margin: 2px 0;
+      color: #e5e7eb;
+    }
+
+    .price-note {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        margin: 16px;
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Energidrikk-teller</h1>
+      <p class="subtitle">
+        Trykk på + hver gang du drikker en boks, så vil din status oppadateres.      </p>
+    </header>
+
+    <!-- INNLOGGING / REGISTRERING -->
+    <section id="auth-section">
+      <div class="grid">
+        <div class="card">
+          <h2>Ny bruker</h2>
+          <p>Registrer deg med e-post og passord.</p>
+          <form id="register-form">
+            <div style="margin-bottom: 10px;">
+              <label for="register-email">E-post</label>
+              <input id="register-email" type="email" required />
+            </div>
+            <div style="margin-bottom: 10px;">
+              <label for="register-password">Passord</label>
+              <input id="register-password" type="password" minlength="6" required />
+            </div>
+            <button type="submit">Registrer konto</button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>Logg inn</h2>
+          <p>Har du allerede en konto? Logg inn her.</p>
+          <form id="login-form">
+            <div style="margin-bottom: 10px;">
+              <label for="login-email">E-post</label>
+              <input id="login-email" type="email" required />
+            </div>
+            <div style="margin-bottom: 10px;">
+              <label for="login-password">Passord</label>
+              <input id="login-password" type="password" required />
+            </div>
+            <button type="submit">Logg inn</button>
+          </form>
+          <p id="auth-error" class="error"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- SELVE APPEN (NÅR MAN ER INNLOGGET) -->
+    <section id="app-section" class="hidden">
+      <div class="top-bar">
+        <div class="welcome">
+          <span id="welcome-text"></span>
+        </div>
+        <button id="logout-btn" class="secondary">Logg ut</button>
+      </div>
+
+      <!-- Totalpris -->
+      <div class="card" style="margin-bottom: 16px;">
+        <h2>Totalt forbruk</h2>
+        <p class="price-line" id="price-summary-total"></p>
+        <p class="price-note">Pris per boks ca: 29,90 kr</p>
+      </div>
+
+      <div>
+        <span class="pill">
+          <span class="pill-dot"></span>
+          Dine energidrikk-tellere
+        </span>
+      </div>
+
+      <div id="drink-list"></div>
+    </section>
+  </div>
+
+  <!-- Firebase (compat v9) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
+  <script>
+    /***********************
+     * 1. Firebase-oppsett *
+     ***********************/
+    // BYTT UT DENNE CONFIGEN MED DIN EGEN FRA FIREBASE-KONSOLLEN
+    const firebaseConfig = {
+      apiKey: "AIzaSyAgxiIs24NqgdecwlRNKm6EuAZbfbjgaeg",
+      authDomain: "energiteller.firebaseapp.com",
+      projectId: "energiteller",
+      storageBucket: "energiteller.appspot.com",
+      messagingSenderId: "891350536936",
+      appId: "1:891350536936:web:5455d4963df7f34429ef5d"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    /**************************
+     * 2. Data: sorter/smaker *
+     **************************/
+    const brands = [
+  {
+    id: "monster",
+    name: "Monster",
+    flavors: [
+      // eksisterende + nye
+      { id: "ultra-white", name: "Ultra White" },
+      { id: "mango-loco", name: "Mango Loco" },
+      { id: "pipeline-punch", name: "Pipeline Punch" },
+
+      { id: "original", name: "Original" },
+      { id: "original-sukkerfri", name: "Original sukkerfri" },
+      { id: "ultra-strawberry-dreams", name: "Ultra Strawberry Dreams" },
+      { id: "ultra-peachy", name: "Ultra Peachy" },
+      { id: "ultra-paradise", name: "Ultra Paradise" },
+      { id: "ultra-rosa", name: "Ultra Rosa" },
+      { id: "aussie-lemonade", name: "Aussie Lemonade" },
+      { id: "juiced-bad-apple", name: "Juiced Bad Apple" },
+      { id: "juiced-monarch", name: "Juiced Monarch" },
+      { id: "pacific-punch", name: "Pacific Punch" },
+      { id: "lewis-hamilton-zero", name: "Lewis Hamilton Zero" },
+      { id: "ultra-fiesta-mango", name: "Ultra Fiesta Mango" },
+      { id: "valentino-rossi-vr46", name: "Valentino Rossi (VR46)" },
+      { id: "lando-norris-zero-sugar", name: "Lando Norris Zero Sugar" }
+    ]
+  },
+  {
+    id: "redbull",
+    name: "Red Bull",
+    flavors: [
+      // eksisterende
+      { id: "original", name: "Original" },
+      { id: "sugarfree", name: "Sugarfree" },
+      { id: "tropical", name: "Tropical Edition" },
+
+      // nye
+      { id: "zero", name: "Zero" },
+      { id: "yellow-edition", name: "Yellow Edition" },
+      { id: "vannmelon", name: "Vannmelon" },
+      { id: "blue-edition", name: "Blue Edition" },
+      { id: "peach", name: "Peach" },
+      { id: "winter-edition", name: "Winter Edition" },
+      { id: "green-edition", name: "Green Edition" },
+      { id: "purple-edition", name: "Purple Edition" },
+      { id: "summer-edition", name: "Summer Edition" },
+      { id: "pink-edition", name: "Pink Edition" },
+      { id: "spring-edition", name: "Spring Edition" }
+    ]
+  },
+  {
+    id: "burn",
+    name: "Burn",
+    flavors: [
+      // eksisterende
+      { id: "original", name: "Original" },
+      { id: "apple-kiwi", name: "Apple Kiwi" },
+
+      // ny
+      { id: "zero-sugar", name: "Zero Sugar" }
+    ]
+  },
+  {
+    id: "powerade",
+    name: "Powerade",
+    flavors: [
+      { id: "bla", name: "Blå" }
+    ]
+  }
+];
+
+    const PRICE_PER_CAN = 29.90;
+
+    /***********************
+     * 3. DOM-referanser   *
+     ***********************/
+    const authSection = document.getElementById("auth-section");
+    const appSection = document.getElementById("app-section");
+    const drinkListEl = document.getElementById("drink-list");
+    const welcomeText = document.getElementById("welcome-text");
+    const authError = document.getElementById("auth-error");
+
+    const registerForm = document.getElementById("register-form");
+    const loginForm = document.getElementById("login-form");
+    const logoutBtn = document.getElementById("logout-btn");
+
+    const priceSummaryTotal = document.getElementById("price-summary-total");
+
+    /***********************
+     * 4. Tilstand         *
+     ***********************/
+    let currentUser = null;
+    let events = [];   // alle +1/-1-hendelser for brukeren
+    let counts = {};   // nåværende teller per smak
+
+    /****************************
+     * 5. Hjelpefunksjoner      *
+     ****************************/
+    function keyFor(brandId, flavorId) {
+      return brandId + "_" + flavorId;
+    }
+
+    function getCountFor(brandId, flavorId) {
+      const key = keyFor(brandId, flavorId);
+      return counts[key] || 0;
+    }
+
+    function clampNonNegative(x) {
+      return x < 0 ? 0 : x;
+    }
+
+    function formatKr(amount) {
+      if (!amount) return "0 kr";
+      return amount.toFixed(2).replace(".", ",") + " kr";
+    }
+
+    function updatePriceSummary(totalCount) {
+      const totalCost = totalCount * PRICE_PER_CAN;
+      priceSummaryTotal.textContent =
+        "Totalt: " + totalCount + " bokser – sum: " + formatKr(totalCost);
+    }
+
+    function renderDrinkList() {
+      drinkListEl.innerHTML = "";
+
+      brands.forEach(function (brand) {
+        const brandDiv = document.createElement("div");
+        brandDiv.className = "brand";
+
+        const header = document.createElement("div");
+        header.className = "brand-header";
+
+        const nameSpan = document.createElement("span");
+        nameSpan.className = "brand-name";
+        nameSpan.textContent = brand.name;
+
+        let totalForBrand = 0;
+        brand.flavors.forEach(function (flavor) {
+          totalForBrand += getCountFor(brand.id, flavor.id);
+        });
+
+        const totalSpan = document.createElement("span");
+        totalSpan.className = "brand-total";
+        totalSpan.textContent = "Totalt: " + totalForBrand;
+
+        header.appendChild(nameSpan);
+        header.appendChild(totalSpan);
+        brandDiv.appendChild(header);
+
+        brand.flavors.forEach(function (flavor) {
+          const row = document.createElement("div");
+          row.className = "flavor-row";
+
+          const flavorInfo = document.createElement("div");
+          flavorInfo.className = "flavor-info";
+
+          const flavorName = document.createElement("span");
+          flavorName.className = "flavor-name";
+          flavorName.textContent = flavor.name;
+
+          const flavorCount = document.createElement("span");
+          flavorCount.className = "flavor-count";
+          const countValue = getCountFor(brand.id, flavor.id);
+          flavorCount.textContent = "Totalt drukket: " + countValue;
+
+          flavorInfo.appendChild(flavorName);
+          flavorInfo.appendChild(flavorCount);
+
+          const actions = document.createElement("div");
+          actions.className = "flavor-actions";
+
+          const incBtn = document.createElement("button");
+          incBtn.type = "button";
+          incBtn.textContent = "+1 boks";
+          incBtn.addEventListener("click", function () {
+            addDrink(brand.id, flavor.id, +1);
+          });
+
+          const decBtn = document.createElement("button");
+          decBtn.type = "button";
+          decBtn.textContent = "-1";
+          decBtn.classList.add("secondary");
+          if (countValue <= 0) {
+            decBtn.disabled = true;
+          }
+          decBtn.addEventListener("click", function () {
+            if (getCountFor(brand.id, flavor.id) > 0) {
+              addDrink(brand.id, flavor.id, -1);
+            }
+          });
+
+          actions.appendChild(incBtn);
+          actions.appendChild(decBtn);
+
+          row.appendChild(flavorInfo);
+          row.appendChild(actions);
+
+          brandDiv.appendChild(row);
+        });
+
+        drinkListEl.appendChild(brandDiv);
+      });
+    }
+
+    function recalculateFromEvents() {
+      counts = {};
+      let totalCount = 0;
+
+      events.forEach(function (evt) {
+        const delta = evt.delta || 0;
+        const key = keyFor(evt.brandId, evt.flavorId);
+        counts[key] = (counts[key] || 0) + delta;
+        totalCount += delta;
+      });
+
+      totalCount = clampNonNegative(totalCount);
+      renderDrinkList();
+      updatePriceSummary(totalCount);
+    }
+
+    async function addDrink(brandId, flavorId, delta) {
+      if (!currentUser) return;
+      if (delta < 0 && getCountFor(brandId, flavorId) <= 0) {
+        return;
+      }
+
+      const now = new Date();
+      events.push({
+        brandId: brandId,
+        flavorId: flavorId,
+        delta: delta,
+        timestamp: now
+      });
+      recalculateFromEvents();
+
+      try {
+        const userRef = db.collection("users").doc(currentUser.uid);
+        await userRef.collection("drinks").add({
+          brandId: brandId,
+          flavorId: flavorId,
+          delta: delta,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (error) {
+        console.error("Kunne ikke lagre hendelse:", error);
+      }
+    }
+
+    async function loadEventsAndRecalculate() {
+      if (!currentUser) return;
+      const userRef = db.collection("users").doc(currentUser.uid);
+      events = [];
+      try {
+        const snap = await userRef
+          .collection("drinks")
+          .orderBy("timestamp", "asc")
+          .get();
+        snap.forEach(function (docSnap) {
+          const data = docSnap.data();
+          let ts = new Date();
+          if (data.timestamp && data.timestamp.toDate) {
+            ts = data.timestamp.toDate();
+          }
+          events.push({
+            brandId: data.brandId || "",
+            flavorId: data.flavorId || "",
+            delta: typeof data.delta === "number" ? data.delta : 0,
+            timestamp: ts
+          });
+        });
+      } catch (error) {
+        console.error("Kunne ikke hente hendelser:", error);
+      }
+      recalculateFromEvents();
+    }
+
+    /*****************************
+     * 6. Innlogging/registrering *
+     *****************************/
+    registerForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      authError.textContent = "";
+
+      const email = document.getElementById("register-email").value.trim();
+      const password = document.getElementById("register-password").value;
+
+      try {
+        await auth.createUserWithEmailAndPassword(email, password);
+        registerForm.reset();
+      } catch (error) {
+        console.error(error);
+        authError.textContent = error.message || "Noe gikk galt ved registrering.";
+      }
+    });
+
+    loginForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      authError.textContent = "";
+
+      const email = document.getElementById("login-email").value.trim();
+      const password = document.getElementById("login-password").value;
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        loginForm.reset();
+      } catch (error) {
+        console.error(error);
+        authError.textContent = "Kunne ikke logge inn. Sjekk e-post og passord.";
+      }
+    });
+
+    logoutBtn.addEventListener("click", function () {
+      auth.signOut();
+    });
+
+    auth.onAuthStateChanged(async function (user) {
+      currentUser = user;
+
+      if (user) {
+        authSection.classList.add("hidden");
+        appSection.classList.remove("hidden");
+        welcomeText.textContent = "Innlogget som " + (user.email || "");
+        await loadEventsAndRecalculate();
+      } else {
+        authSection.classList.remove("hidden");
+        appSection.classList.add("hidden");
+        welcomeText.textContent = "";
+        events = [];
+        counts = {};
+        recalculateFromEvents();
+      }
+    });
+  </script>
+</body>
+</html>
