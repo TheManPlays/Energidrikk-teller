@@ -307,7 +307,7 @@
       color: #9ca3af;
     }
 
-    /* Ny layout: main + sidebar */
+    /* layout for main + sidebar */
     .app-grid {
       display: grid;
       grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
@@ -358,10 +358,10 @@
       <div class="grid">
         <div class="card">
           <h2>Ny bruker</h2>
-          <p>Registrer deg med e-post og passord.</p>
+          <p>Registrer deg med e-post eller telefonnummer og passord.</p>
           <form id="register-form">
             <div style="margin-bottom: 10px;">
-              <label for="register-email">E-post</label>
+              <label for="register-email">E-post eller telefonnummer</label>
               <input id="register-email" type="email" required />
             </div>
             <div style="margin-bottom: 10px;">
@@ -377,7 +377,7 @@
           <p>Har du allerede en konto? Logg inn her.</p>
           <form id="login-form">
             <div style="margin-bottom: 10px;">
-              <label for="login-email">E-post</label>
+              <label for="login-email">E-post eller telefonnummer</label>
               <input id="login-email" type="email" required />
             </div>
             <div style="margin-bottom: 10px;">
@@ -928,40 +928,51 @@
       if (!leaderboardList) return;
       leaderboardList.textContent = "Laster...";
       try {
-        const snap = await db
-          .collection("users")
-          .orderBy("totalUnits", "desc")
-          .limit(10)
-          .get();
+        const snap = await db.collection("users").get();
+        const entries = [];
+
+        snap.forEach(function (docSnap) {
+          const data = docSnap.data() || {};
+          let total = 0;
+          if (data.counts && typeof data.counts === "object") {
+            for (const key in data.counts) {
+              if (Object.prototype.hasOwnProperty.call(data.counts, key)) {
+                const v = data.counts[key];
+                if (typeof v === "number" && v > 0) {
+                  total += v;
+                }
+              }
+            }
+          }
+          const email = shortEmail(data.email || "");
+          entries.push({ email, total });
+        });
+
+        // sorter lokalt etter total
+        entries.sort((a, b) => b.total - a.total);
 
         leaderboardList.innerHTML = "";
-        let rank = 1;
-        snap.forEach(function (docSnap) {
-          const data = docSnap.data();
-          const total = typeof data.totalUnits === "number" ? data.totalUnits : 0;
-          const email = shortEmail(data.email || "");
+        if (entries.length === 0) {
+          leaderboardList.textContent = "Ingen data ennå.";
+          return;
+        }
 
+        entries.slice(0, 10).forEach((entry, idx) => {
           const row = document.createElement("div");
           row.className = "leader-row";
 
           const nameSpan = document.createElement("span");
           nameSpan.className = "leader-name";
-          nameSpan.textContent = rank + ". " + (email || "(ukjent)");
+          nameSpan.textContent = (idx + 1) + ". " + (entry.email || "(ukjent)");
 
           const valueSpan = document.createElement("span");
           valueSpan.className = "leader-value";
-          valueSpan.textContent = total + " enheter";
+          valueSpan.textContent = entry.total + " enheter";
 
           row.appendChild(nameSpan);
           row.appendChild(valueSpan);
           leaderboardList.appendChild(row);
-
-          rank++;
         });
-
-        if (rank === 1) {
-          leaderboardList.textContent = "Ingen data ennå.";
-        }
       } catch (e) {
         console.error("Kunne ikke laste leaderboard:", e);
         leaderboardList.textContent = "Kunne ikke laste leaderboard.";
