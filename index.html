@@ -135,6 +135,16 @@
       box-shadow: 0 4px 10px rgba(15,23,42,0.8);
     }
 
+    button.danger {
+      background: #b91c1c;
+      color: #fee2e2;
+    }
+
+    button.danger:hover {
+      box-shadow: 0 8px 18px rgba(185,28,28,0.5);
+      filter: brightness(1.05);
+    }
+
     button:disabled {
       opacity: 0.4;
       cursor: not-allowed;
@@ -199,7 +209,15 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .brand-header-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .brand-name {
@@ -210,6 +228,19 @@
     .brand-total {
       font-size: 0.8rem;
       color: #9ca3af;
+    }
+
+    .brand-toggle-icon {
+      font-size: 0.8rem;
+      color: #9ca3af;
+    }
+
+    .brand-body {
+      margin-top: 4px;
+    }
+
+    .brand-body.collapsed {
+      display: none;
     }
 
     .flavor-row {
@@ -244,13 +275,20 @@
 
     .price-line {
       font-size: 0.9rem;
-      margin: 2px 0;
+      margin: 2px 0 8px 0;
       color: #e5e7eb;
     }
 
     .price-note {
       font-size: 0.8rem;
       color: #9ca3af;
+      margin-bottom: 10px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 180px;
+      width: 100%;
     }
 
     @media (max-width: 600px) {
@@ -264,9 +302,11 @@
 <body>
   <div class="container">
     <header>
-      <h1>Energidrikk-teller 2026</h1>
+      <h1>Energidrikk-teller</h1>
       <p class="subtitle">
-        Trykk på + hver gang du drikker en boks, så vil din status oppadateres.      </p>
+        Logg inn og trykk på + hver gang du drikker en boks.
+        Hver bruker har sin egen oversikt, lagret i skyen.
+      </p>
     </header>
 
     <!-- INNLOGGING / REGISTRERING -->
@@ -316,11 +356,20 @@
         <button id="logout-btn" class="secondary">Logg ut</button>
       </div>
 
+      <!-- Graf -->
+      <div class="card" style="margin-bottom: 16px;">
+        <h2>Forbruk per måned</h2>
+        <div class="chart-wrapper">
+          <canvas id="monthlyChart"></canvas>
+        </div>
+      </div>
+
       <!-- Totalpris -->
       <div class="card" style="margin-bottom: 16px;">
         <h2>Totalt forbruk</h2>
         <p class="price-line" id="price-summary-total"></p>
-        <p class="price-note">Pris per boks ca: 29,90 kr</p>
+        <p class="price-note">Pris per boks: 29,90 kr</p>
+        <button id="reset-all-btn" class="danger">Fjern alt</button>
       </div>
 
       <div>
@@ -338,6 +387,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+  <!-- Chart.js for graf -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
     /***********************
@@ -361,82 +412,79 @@
      * 2. Data: sorter/smaker *
      **************************/
     const brands = [
-  {
-    id: "monster",
-    name: "Monster",
-    flavors: [
-      // tidligere + nye
-      { id: "ultra-white", name: "Ultra White" },
-      { id: "mango-loco", name: "Mango Loco" },
-      { id: "pipeline-punch", name: "Pipeline Punch" },
-
-      { id: "original", name: "Original" },
-      { id: "original-sukkerfri", name: "Original sukkerfri" },
-      { id: "ultra-strawberry-dreams", name: "Ultra Strawberry Dreams" },
-      { id: "ultra-peachy", name: "Ultra Peachy" },
-      { id: "ultra-paradise", name: "Ultra Paradise" },
-      { id: "ultra-rosa", name: "Ultra Rosa" },
-      { id: "aussie-lemonade", name: "Aussie Lemonade" },
-      { id: "juiced-bad-apple", name: "Juiced Bad Apple" },
-      { id: "juiced-monarch", name: "Juiced Monarch" },
-      { id: "pacific-punch", name: "Pacific Punch" },
-      { id: "lewis-hamilton-zero", name: "Lewis Hamilton Zero" },
-      { id: "ultra-fiesta-mango", name: "Ultra Fiesta Mango" },
-      { id: "valentino-rossi-vr46", name: "Valentino Rossi (VR46)" },
-      { id: "lando-norris-zero-sugar", name: "Lando Norris Zero Sugar" }
-    ]
-  },
-  {
-    id: "redbull",
-    name: "Red Bull",
-    flavors: [
-      { id: "original", name: "Original" },
-      { id: "sugarfree", name: "Sugarfree" },
-      { id: "tropical", name: "Tropical Edition" },
-
-      { id: "zero", name: "Zero" },
-      { id: "yellow-edition", name: "Yellow Edition" },
-      { id: "vannmelon", name: "Vannmelon" },
-      { id: "blue-edition", name: "Blue Edition" },
-      { id: "peach", name: "Peach" },
-      { id: "winter-edition", name: "Winter Edition" },
-      { id: "green-edition", name: "Green Edition" },
-      { id: "purple-edition", name: "Purple Edition" },
-      { id: "summer-edition", name: "Summer Edition" },
-      { id: "pink-edition", name: "Pink Edition" },
-      { id: "spring-edition", name: "Spring Edition" }
-    ]
-  },
-  {
-    id: "burn",
-    name: "Burn",
-    flavors: [
-      { id: "original", name: "Original" },
-      { id: "apple-kiwi", name: "Apple Kiwi" },
-      { id: "zero-sugar", name: "Zero Sugar" }
-    ]
-  },
-  {
-    id: "powerade",
-    name: "Powerade",
-    flavors: [
-      { id: "bla", name: "Blå" } // Powerade blå
-    ]
-  },
-  {
-    id: "battery",
-    name: "Battery",
-    flavors: [
-      { id: "original", name: "Battery Original" },
-      { id: "fresh", name: "Battery Fresh" },
-      { id: "blueberry", name: "Battery Blueberry" },
-      { id: "peachberry", name: "Battery Peachberry" },
-      { id: "zero-lemon-yuzu", name: "Battery Zero Lemon Yuzu" },
-      { id: "strawberry-mint", name: "Battery Strawberry mint" },
-      { id: "zero-calories", name: "Battery Zero Calories" }
-    ]
-  }
-];
+      {
+        id: "monster",
+        name: "Monster",
+        flavors: [
+          { id: "ultra-white", name: "Ultra White" },
+          { id: "mango-loco", name: "Mango Loco" },
+          { id: "original", name: "Original" },
+          { id: "original-sukkerfri", name: "Original sukkerfri" },
+          { id: "ultra-strawberry-dreams", name: "Ultra Strawberry Dreams" },
+          { id: "ultra-peachy", name: "Ultra Peachy" },
+          { id: "ultra-paradise", name: "Ultra Paradise" },
+          { id: "ultra-rosa", name: "Ultra Rosa" },
+          { id: "aussie-lemonade", name: "Aussie Lemonade" },
+          { id: "juiced-bad-apple", name: "Juiced Bad Apple" },
+          { id: "juiced-monarch", name: "Juiced Monarch" },
+          { id: "pipeline-punch", name: "Pipeline Punch" },
+          { id: "pacific-punch", name: "Pacific Punch" },
+          { id: "lewis-hamilton-zero", name: "Lewis Hamilton Zero" },
+          { id: "ultra-fiesta-mango", name: "Ultra Fiesta Mango" },
+          { id: "valentino-rossi-vr46", name: "Valentino Rossi (VR46)" },
+          { id: "lando-norris-zero-sugar", name: "Lando Norris Zero Sugar" }
+        ]
+      },
+      {
+        id: "redbull",
+        name: "Red Bull",
+        flavors: [
+          { id: "original", name: "Original" },
+          { id: "sugarfree", name: "Sugarfree" },
+          { id: "tropical", name: "Tropical Edition" },
+          { id: "zero", name: "Zero" },
+          { id: "yellow-edition", name: "Yellow Edition" },
+          { id: "vannmelon", name: "Vannmelon" },
+          { id: "blue-edition", name: "Blue Edition" },
+          { id: "peach", name: "Peach" },
+          { id: "winter-edition", name: "Winter Edition" },
+          { id: "green-edition", name: "Green Edition" },
+          { id: "purple-edition", name: "Purple Edition" },
+          { id: "summer-edition", name: "Summer Edition" },
+          { id: "pink-edition", name: "Pink Edition" },
+          { id: "spring-edition", name: "Spring Edition" }
+        ]
+      },
+      {
+        id: "burn",
+        name: "Burn",
+        flavors: [
+          { id: "original", name: "Original" },
+          { id: "apple-kiwi", name: "Apple Kiwi" },
+          { id: "zero-sugar", name: "Zero Sugar" }
+        ]
+      },
+      {
+        id: "powerade",
+        name: "Powerade",
+        flavors: [
+          { id: "bla", name: "Blå" } // Powerade blå
+        ]
+      },
+      {
+        id: "battery",
+        name: "Battery",
+        flavors: [
+          { id: "original", name: "Battery Original" },
+          { id: "fresh", name: "Battery Fresh" },
+          { id: "blueberry", name: "Battery Blueberry" },
+          { id: "peachberry", name: "Battery Peachberry" },
+          { id: "zero-lemon-yuzu", name: "Battery Zero Lemon Yuzu" },
+          { id: "strawberry-mint", name: "Battery Strawberry mint" },
+          { id: "zero-calories", name: "Battery Zero Calories" }
+        ]
+      }
+    ];
 
     const PRICE_PER_CAN = 29.90;
 
@@ -454,13 +502,16 @@
     const logoutBtn = document.getElementById("logout-btn");
 
     const priceSummaryTotal = document.getElementById("price-summary-total");
+    const resetAllBtn = document.getElementById("reset-all-btn");
 
     /***********************
      * 4. Tilstand         *
      ***********************/
     let currentUser = null;
-    let events = [];   // alle +1/-1-hendelser for brukeren
-    let counts = {};   // nåværende teller per smak
+    let counts = {};          // key: "brand_flavor" -> tall
+    let monthlyChart = null;  // Chart.js-instans
+    let brandState = {};      // husker hvilke merker som er åpne
+    let events = [];          // alle +1/-1-hendelser (for graf)
 
     /****************************
      * 5. Hjelpefunksjoner      *
@@ -499,22 +550,52 @@
         const header = document.createElement("div");
         header.className = "brand-header";
 
+        const headerLeft = document.createElement("div");
+        headerLeft.className = "brand-header-left";
+
+        const toggleIcon = document.createElement("span");
+        toggleIcon.className = "brand-toggle-icon";
+
+        let state = brandState[brand.id];
+        if (!state) {
+          state = { collapsed: false };
+          brandState[brand.id] = state;
+        }
+        const collapsed = state.collapsed;
+        toggleIcon.textContent = collapsed ? "▶" : "▼";
+
         const nameSpan = document.createElement("span");
         nameSpan.className = "brand-name";
         nameSpan.textContent = brand.name;
+
+        headerLeft.appendChild(toggleIcon);
+        headerLeft.appendChild(nameSpan);
+
+        const totalSpan = document.createElement("span");
+        totalSpan.className = "brand-total";
 
         let totalForBrand = 0;
         brand.flavors.forEach(function (flavor) {
           totalForBrand += getCountFor(brand.id, flavor.id);
         });
-
-        const totalSpan = document.createElement("span");
-        totalSpan.className = "brand-total";
         totalSpan.textContent = "Totalt: " + totalForBrand;
 
-        header.appendChild(nameSpan);
+        header.appendChild(headerLeft);
         header.appendChild(totalSpan);
-        brandDiv.appendChild(header);
+
+        const body = document.createElement("div");
+        body.className = "brand-body";
+        if (collapsed) {
+          body.classList.add("collapsed");
+        }
+
+        header.addEventListener("click", function () {
+          const st = brandState[brand.id] || { collapsed: false };
+          st.collapsed = !st.collapsed;
+          brandState[brand.id] = st;
+          body.classList.toggle("collapsed", st.collapsed);
+          toggleIcon.textContent = st.collapsed ? "▶" : "▼";
+        });
 
         brand.flavors.forEach(function (flavor) {
           const row = document.createElement("div");
@@ -541,7 +622,8 @@
           const incBtn = document.createElement("button");
           incBtn.type = "button";
           incBtn.textContent = "+1 boks";
-          incBtn.addEventListener("click", function () {
+          incBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
             addDrink(brand.id, flavor.id, +1);
           });
 
@@ -552,7 +634,8 @@
           if (countValue <= 0) {
             decBtn.disabled = true;
           }
-          decBtn.addEventListener("click", function () {
+          decBtn.addEventListener("click", function (event) {
+            event.stopPropagation();
             if (getCountFor(brand.id, flavor.id) > 0) {
               addDrink(brand.id, flavor.id, -1);
             }
@@ -564,61 +647,189 @@
           row.appendChild(flavorInfo);
           row.appendChild(actions);
 
-          brandDiv.appendChild(row);
+          body.appendChild(row);
         });
 
+        brandDiv.appendChild(header);
+        brandDiv.appendChild(body);
         drinkListEl.appendChild(brandDiv);
       });
     }
 
-    function recalculateFromEvents() {
-      counts = {};
+    function recalculateTotalsFromCounts() {
       let totalCount = 0;
-
-      events.forEach(function (evt) {
-        const delta = evt.delta || 0;
-        const key = keyFor(evt.brandId, evt.flavorId);
-        counts[key] = (counts[key] || 0) + delta;
-        totalCount += delta;
-      });
-
-      totalCount = clampNonNegative(totalCount);
+      for (const key in counts) {
+        if (Object.prototype.hasOwnProperty.call(counts, key)) {
+          const value = counts[key];
+          if (typeof value === "number" && value > 0) {
+            totalCount += value;
+          }
+        }
+      }
       renderDrinkList();
       updatePriceSummary(totalCount);
     }
 
-    async function addDrink(brandId, flavorId, delta) {
-      if (!currentUser) return;
-      if (delta < 0 && getCountFor(brandId, flavorId) <= 0) {
-        return;
-      }
+    function getLocalCountsKey() {
+      if (!currentUser || !currentUser.uid) return null;
+      return "energyCounts_" + currentUser.uid;
+    }
 
-      const now = new Date();
-      events.push({
-        brandId: brandId,
-        flavorId: flavorId,
-        delta: delta,
-        timestamp: now
-      });
-      recalculateFromEvents();
-
+    function loadCountsFromLocal() {
+      const key = getLocalCountsKey();
+      if (!key) return {};
+      const raw = localStorage.getItem(key);
+      if (!raw) return {};
       try {
-        const userRef = db.collection("users").doc(currentUser.uid);
-        await userRef.collection("drinks").add({
-          brandId: brandId,
-          flavorId: flavorId,
-          delta: delta,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (error) {
-        console.error("Kunne ikke lagre hendelse:", error);
+        const data = JSON.parse(raw);
+        if (data && typeof data === "object") {
+          return data;
+        }
+      } catch (e) {
+        console.error("Kunne ikke lese lokal lagring:", e);
+      }
+      return {};
+    }
+
+    function saveCountsToLocal() {
+      const key = getLocalCountsKey();
+      if (!key) return;
+      try {
+        localStorage.setItem(key, JSON.stringify(counts));
+      } catch (e) {
+        console.error("Kunne ikke lagre lokalt:", e);
       }
     }
 
-    async function loadEventsAndRecalculate() {
-      if (!currentUser) return;
+    async function fetchCountsFromServer() {
+      if (!currentUser || !currentUser.uid) return {};
+      const userRef = db.collection("users").doc(currentUser.uid);
+      try {
+        const snap = await userRef.get();
+        if (snap.exists) {
+          const data = snap.data();
+          if (data && typeof data.counts === "object") {
+            const newCounts = {};
+            for (const key in data.counts) {
+              if (Object.prototype.hasOwnProperty.call(data.counts, key)) {
+                const value = data.counts[key];
+                if (typeof value === "number" && value > 0) {
+                  newCounts[key] = value;
+                }
+              }
+            }
+            return newCounts;
+          }
+        }
+      } catch (e) {
+        console.error("Kunne ikke hente counts fra server:", e);
+      }
+      return {};
+    }
+
+    function applyCounts(newCounts) {
+      counts = newCounts || {};
+      recalculateTotalsFromCounts();
+      saveCountsToLocal();
+    }
+
+    function buildMonthlyCountsFromEvents(eventsList) {
+      const monthlyCounts = {};
+      if (!eventsList) return monthlyCounts;
+
+      eventsList.forEach(function (ev) {
+        if (!ev || typeof ev.delta !== "number") return;
+        const ts = ev.timestamp instanceof Date ? ev.timestamp : null;
+        if (!ts) return;
+        const year = ts.getFullYear();
+        const month = ts.getMonth() + 1;
+        const key = year + "-" + String(month).padStart(2, "0");
+        monthlyCounts[key] = (monthlyCounts[key] || 0) + ev.delta;
+      });
+
+      for (const key in monthlyCounts) {
+        if (Object.prototype.hasOwnProperty.call(monthlyCounts, key)) {
+          if (monthlyCounts[key] < 0) monthlyCounts[key] = 0;
+        }
+      }
+
+      return monthlyCounts;
+    }
+
+    function updateMonthlyChart(monthlyCounts) {
+      const canvas = document.getElementById("monthlyChart");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+
+      const now = new Date();
+      const monthsToShow = 12;
+      const labels = [];
+      const data = [];
+
+      for (let i = monthsToShow - 1; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const year = d.getFullYear();
+        const monthIndex = d.getMonth(); // 0-11
+        const month = monthIndex + 1;
+        const key = year + "-" + String(month).padStart(2, "0");
+        const label = d.toLocaleDateString("no-NO", {
+          month: "short",
+          year: "2-digit"
+        });
+        labels.push(label);
+        const value = monthlyCounts && monthlyCounts[key] ? monthlyCounts[key] : 0;
+        data.push(value);
+      }
+
+      if (monthlyChart) {
+        monthlyChart.data.labels = labels;
+        monthlyChart.data.datasets[0].data = data;
+        monthlyChart.update();
+      } else {
+        monthlyChart = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Bokser per måned",
+                data: data,
+                borderWidth: 1
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: {
+                  precision: 0
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: false
+              }
+            }
+          }
+        });
+      }
+    }
+
+    async function loadMonthlyStatsFromEvents() {
+      if (!currentUser || !currentUser.uid) {
+        events = [];
+        updateMonthlyChart({});
+        return;
+      }
+
       const userRef = db.collection("users").doc(currentUser.uid);
       events = [];
+      let monthlyCounts = {};
+
       try {
         const snap = await userRef
           .collection("drinks")
@@ -626,25 +837,88 @@
           .get();
         snap.forEach(function (docSnap) {
           const data = docSnap.data();
-          let ts = new Date();
-          if (data.timestamp && data.timestamp.toDate) {
-            ts = data.timestamp.toDate();
-          }
-          events.push({
-            brandId: data.brandId || "",
-            flavorId: data.flavorId || "",
-            delta: typeof data.delta === "number" ? data.delta : 0,
-            timestamp: ts
-          });
+          const delta = typeof data.delta === "number" ? data.delta : 0;
+          if (!data.timestamp || !data.timestamp.toDate) return;
+          const ts = data.timestamp.toDate();
+          events.push({ delta: delta, timestamp: ts });
         });
-      } catch (error) {
-        console.error("Kunne ikke hente hendelser:", error);
+        monthlyCounts = buildMonthlyCountsFromEvents(events);
+      } catch (e) {
+        console.error("Kunne ikke hente hendelser for graf:", e);
       }
-      recalculateFromEvents();
+
+      updateMonthlyChart(monthlyCounts);
+    }
+
+    async function addDrink(brandId, flavorId, delta) {
+      if (!currentUser || !currentUser.uid) return;
+
+      const key = keyFor(brandId, flavorId);
+      const current = counts[key] || 0;
+      const next = current + delta;
+
+      if (next < 0) {
+        return;
+      }
+
+      counts[key] = next;
+      recalculateTotalsFromCounts();
+      saveCountsToLocal();
+
+      // Oppdater graf lokalt umiddelbart
+      const now = new Date();
+      events.push({ delta: delta, timestamp: now });
+      const monthlyCounts = buildMonthlyCountsFromEvents(events);
+      updateMonthlyChart(monthlyCounts);
+
+      // Lagre til Firestore (counts + event)
+      try {
+        const userRef = db.collection("users").doc(currentUser.uid);
+        await userRef.set({ counts: counts }, { merge: true });
+        await userRef.collection("drinks").add({
+          brandId: brandId,
+          flavorId: flavorId,
+          delta: delta,
+          timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (e) {
+        console.error("Kunne ikke oppdatere i Firestore:", e);
+      }
     }
 
     /*****************************
-     * 6. Innlogging/registrering *
+     * 6. Nullstill alt          *
+     *****************************/
+    if (resetAllBtn) {
+      resetAllBtn.addEventListener("click", async function () {
+        if (!currentUser || !currentUser.uid) return;
+        const sure = confirm("Er du sikker på at du vil fjerne alle tallene?");
+        if (!sure) return;
+
+        counts = {};
+        recalculateTotalsFromCounts();
+        saveCountsToLocal();
+        events = [];
+        updateMonthlyChart({});
+
+        try {
+          const userRef = db.collection("users").doc(currentUser.uid);
+          await userRef.set({ counts: {} }, { merge: true });
+
+          const snap = await userRef.collection("drinks").get();
+          const batch = db.batch();
+          snap.forEach(function (docSnap) {
+            batch.delete(docSnap.ref);
+          });
+          await batch.commit();
+        } catch (e) {
+          console.error("Kunne ikke fjerne alt:", e);
+        }
+      });
+    }
+
+    /*****************************
+     * 7. Innlogging/registrering *
      *****************************/
     registerForm.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -689,14 +963,34 @@
         authSection.classList.add("hidden");
         appSection.classList.remove("hidden");
         welcomeText.textContent = "Innlogget som " + (user.email || "");
-        await loadEventsAndRecalculate();
+
+        // Start med lokale tall (hvis de finnes)
+        const localCounts = loadCountsFromLocal();
+        applyCounts(localCounts);
+
+        // Hent counts fra server og la server vinne hvis den har data
+        const serverCounts = await fetchCountsFromServer();
+        if (Object.keys(serverCounts).length > 0) {
+          applyCounts(serverCounts);
+        } else if (Object.keys(localCounts).length > 0) {
+          try {
+            const userRef = db.collection("users").doc(currentUser.uid);
+            await userRef.set({ counts: counts }, { merge: true });
+          } catch (e) {
+            console.error("Kunne ikke sync lokal -> server:", e);
+          }
+        }
+
+        await loadMonthlyStatsFromEvents();
       } else {
         authSection.classList.remove("hidden");
         appSection.classList.add("hidden");
         welcomeText.textContent = "";
-        events = [];
         counts = {};
-        recalculateFromEvents();
+        brandState = {};
+        events = [];
+        recalculateTotalsFromCounts();
+        updateMonthlyChart({});
       }
     });
   </script>
