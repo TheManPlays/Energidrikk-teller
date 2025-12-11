@@ -304,7 +304,7 @@
     <header>
       <h1>Energidrikk-teller</h1>
       <p class="subtitle">
-        Logg inn og trykk på + hver gang du drikker en boks.
+        Logg inn og trykk på + hver gang du drikker en enhet.
         Hver bruker har sin egen oversikt, lagret i skyen.
       </p>
     </header>
@@ -314,10 +314,10 @@
       <div class="grid">
         <div class="card">
           <h2>Ny bruker</h2>
-          <p>Registrer deg med e-post eller telefonnummer og passord.</p>
+          <p>Registrer deg med e-post og passord.</p>
           <form id="register-form">
             <div style="margin-bottom: 10px;">
-              <label for="register-email">E-post eller telefonnummer</label>
+              <label for="register-email">E-post</label>
               <input id="register-email" type="email" required />
             </div>
             <div style="margin-bottom: 10px;">
@@ -333,7 +333,7 @@
           <p>Har du allerede en konto? Logg inn her.</p>
           <form id="login-form">
             <div style="margin-bottom: 10px;">
-              <label for="login-email">E-post eller telefonnummer</label>
+              <label for="login-email">E-post</label>
               <input id="login-email" type="email" required />
             </div>
             <div style="margin-bottom: 10px;">
@@ -368,14 +368,14 @@
       <div class="card" style="margin-bottom: 16px;">
         <h2>Totalt forbruk</h2>
         <p class="price-line" id="price-summary-total"></p>
-        <p class="price-note">Pris per boks: 29,90 kr</p>
+        <p class="price-note">Pris per enhet: 29,90 kr</p>
         <button id="reset-all-btn" class="danger">Fjern alt</button>
       </div>
 
       <div>
         <span class="pill">
           <span class="pill-dot"></span>
-          Dine energidrikk-tellere
+          Dine energidrikk-enheter
         </span>
       </div>
 
@@ -387,21 +387,21 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
-  <!-- Chart.js for graf -->
+  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <script>
     /***********************
      * 1. Firebase-oppsett *
      ***********************/
-    // BYTT UT DENNE CONFIGEN MED DIN EGEN FRA FIREBASE-KONSOLLEN
+    // BYTT UT HELE DETTE OBJEKTET MED DITT FRA FIREBASE-KONSOLLEN
     const firebaseConfig = {
-      apiKey: "AIzaSyAgxiIs24NqgdecwlRNKm6EuAZbfbjgaeg",
-      authDomain: "energiteller.firebaseapp.com",
-      projectId: "energiteller",
-      storageBucket: "energiteller.appspot.com",
-      messagingSenderId: "891350536936",
-      appId: "1:891350536936:web:5455d4963df7f34429ef5d"
+      apiKey: "DIN_API_KEY_HER",
+      authDomain: "DITT_PROSJEKT.firebaseapp.com",
+      projectId: "DITT_PROSJEKT_ID",
+      storageBucket: "DITT_PROSJEKT.appspot.com",
+      messagingSenderId: "DIN_SENDER_ID",
+      appId: "DIN_APP_ID"
     };
 
     firebase.initializeApp(firebaseConfig);
@@ -468,8 +468,8 @@
         id: "powerade",
         name: "Powerade",
         flavors: [
-          { id: "bla", name: "Blå" }
-          { id: "gul", name: "Gul" }
+          { id: "bla", name: "Blå" },
+          { id: "gul", name: "Gul" },
           { id: "gra", name: "Grå" }
         ]
       },
@@ -488,7 +488,7 @@
       }
     ];
 
-    const PRICE_PER_CAN = 29.90;
+    const PRICE_PER_UNIT = 29.90;
 
     /***********************
      * 3. DOM-referanser   *
@@ -510,9 +510,9 @@
      * 4. Tilstand         *
      ***********************/
     let currentUser = null;
-    let counts = {};          // key: "brand_flavor" -> tall
-    let monthlyStats = {};    // key: "YYYY-MM" -> tall
-    let brandState = {};      // husker åpne/lukkede menyer
+    let counts = {};          // key: "brand_flavor" -> number
+    let monthlyStats = {};    // key: "YYYY-MM" -> number
+    let brandState = {};      // remember expanded/collapsed brands
     let monthlyChart = null;
 
     /****************************
@@ -537,9 +537,15 @@
     }
 
     function updatePriceSummary(totalCount) {
-      const totalCost = totalCount * PRICE_PER_CAN;
+      const totalCost = totalCount * PRICE_PER_UNIT;
       priceSummaryTotal.textContent =
-        "Totalt: " + totalCount + " bokser – sum: " + formatKr(totalCost);
+        "Totalt: " + totalCount + " enheter – sum: " + formatKr(totalCost);
+    }
+
+    function getMonthKey(date) {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      return year + "-" + String(month).padStart(2, "0");
     }
 
     function renderDrinkList() {
@@ -613,7 +619,7 @@
           const flavorCount = document.createElement("span");
           flavorCount.className = "flavor-count";
           const countValue = getCountFor(brand.id, flavor.id);
-          flavorCount.textContent = "Totalt drukket: " + countValue;
+          flavorCount.textContent = "Totalt drukket: " + countValue + " enheter";
 
           flavorInfo.appendChild(flavorName);
           flavorInfo.appendChild(flavorCount);
@@ -672,12 +678,6 @@
       updatePriceSummary(totalCount);
     }
 
-    function getMonthKey(date) {
-      const year = date.getFullYear();
-      const month = date.getMonth() + 1;
-      return year + "-" + String(month).padStart(2, "0");
-    }
-
     function updateMonthlyChart(stats) {
       const canvas = document.getElementById("monthlyChart");
       if (!canvas) return;
@@ -691,7 +691,7 @@
       for (let i = monthsToShow - 1; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const year = d.getFullYear();
-        const monthIndex = d.getMonth(); // 0-11
+        const monthIndex = d.getMonth();
         const month = monthIndex + 1;
         const key = year + "-" + String(month).padStart(2, "0");
         const label = d.toLocaleDateString("no-NO", {
@@ -714,7 +714,7 @@
             labels: labels,
             datasets: [
               {
-                label: "Bokser per måned",
+                label: "Enheter per måned",
                 data: data,
                 borderWidth: 1
               }
@@ -855,7 +855,6 @@
       const key = keyFor(brandId, flavorId);
       const current = counts[key] || 0;
       const next = current + delta;
-
       if (next < 0) return;
 
       counts[key] = next;
@@ -932,16 +931,22 @@
         appSection.classList.remove("hidden");
         welcomeText.textContent = "Innlogget som " + (user.email || "");
 
+        // Last først fra localStorage
         const localData = loadFromLocal();
         applyData(localData);
 
+        // Hent fra server – hvis server har noe, bruk det
         const serverData = await fetchUserDataFromServer();
-        if (Object.keys(serverData.counts).length > 0 || Object.keys(serverData.monthlyStats).length > 0) {
+        if (
+          Object.keys(serverData.counts).length > 0 ||
+          Object.keys(serverData.monthlyStats).length > 0
+        ) {
           applyData(serverData);
         } else if (
           Object.keys(localData.counts).length > 0 ||
           Object.keys(localData.monthlyStats).length > 0
         ) {
+          // server tom, men vi har data lokalt → skyv det opp
           await saveUserDataToServer();
         }
       } else {
