@@ -44,11 +44,6 @@
       font-size: 1.3rem;
     }
 
-    h3 {
-      margin: 0 0 8px 0;
-      font-size: 1.1rem;
-    }
-
     p {
       margin: 0 0 8px 0;
     }
@@ -302,7 +297,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>Energidrikk-teller 2026</h1>
+      <h1>Energidrikk-teller</h1>
       <p class="subtitle">
         Trykk på + hver gang du drikker en enhet.
       </p>
@@ -743,54 +738,6 @@
     }
 
     /***********************
-     * 6. Lokal lagring    *
-     ***********************/
-    function getLocalKey() {
-      if (!currentUser || !currentUser.uid) return null;
-      return "energyTracker_" + currentUser.uid;
-    }
-
-    function loadFromLocal() {
-      const key = getLocalKey();
-      if (!key) return { counts: {}, monthlyStats: {} };
-      const raw = localStorage.getItem(key);
-      if (!raw) return { counts: {}, monthlyStats: {} };
-      try {
-        const data = JSON.parse(raw);
-        const out = { counts: {}, monthlyStats: {} };
-        if (data && typeof data.counts === "object") {
-          for (const k in data.counts) {
-            if (typeof data.counts[k] === "number") {
-              out.counts[k] = data.counts[k];
-            }
-          }
-        }
-        if (data && typeof data.monthlyStats === "object") {
-          for (const k in data.monthlyStats) {
-            if (typeof data.monthlyStats[k] === "number") {
-              out.monthlyStats[k] = data.monthlyStats[k];
-            }
-          }
-        }
-        return out;
-      } catch (e) {
-        console.error("Kunne ikke lese lokal lagring:", e);
-        return { counts: {}, monthlyStats: {} };
-      }
-    }
-
-    function saveToLocal() {
-      const key = getLocalKey();
-      if (!key) return;
-      const payload = { counts, monthlyStats };
-      try {
-        localStorage.setItem(key, JSON.stringify(payload));
-      } catch (e) {
-        console.error("Kunne ikke lagre lokalt:", e);
-      }
-    }
-
-    /***********************
      * 7. Firestore        *
      ***********************/
     async function fetchUserDataFromServer() {
@@ -849,7 +796,6 @@
       monthlyStats = data.monthlyStats || {};
       recalculateTotalsFromCounts();
       updateMonthlyChart(monthlyStats);
-      saveToLocal();
     }
 
     /****************************
@@ -871,7 +817,6 @@
 
       recalculateTotalsFromCounts();
       updateMonthlyChart(monthlyStats);
-      saveToLocal();
       await saveUserDataToServer();
     }
 
@@ -886,7 +831,6 @@
         totalUnits = 0;
         recalculateTotalsFromCounts();
         updateMonthlyChart(monthlyStats);
-        saveToLocal();
         await saveUserDataToServer();
       });
     }
@@ -930,6 +874,9 @@
       auth.signOut();
     });
 
+    /****************************
+     * 10. Auth state           *
+     ****************************/
     auth.onAuthStateChanged(async function (user) {
       currentUser = user;
 
@@ -938,11 +885,6 @@
         appSection.classList.remove("hidden");
         welcomeText.textContent = "Innlogget som " + (user.email || "");
 
-        // 1) Lokale data først
-        const localData = loadFromLocal();
-        applyData(localData);
-
-        // 2) Hent fra server hvis det finnes noe der
         const serverData = await fetchUserDataFromServer();
         if (
           Object.keys(serverData.counts).length > 0 ||
@@ -950,11 +892,12 @@
           serverData.totalUnits > 0
         ) {
           applyData(serverData);
-        } else if (
-          Object.keys(localData.counts).length > 0 ||
-          Object.keys(localData.monthlyStats).length > 0
-        ) {
-          await saveUserDataToServer();
+        } else {
+          counts = {};
+          monthlyStats = {};
+          totalUnits = 0;
+          recalculateTotalsFromCounts();
+          updateMonthlyChart(monthlyStats);
         }
       } else {
         authSection.classList.remove("hidden");
