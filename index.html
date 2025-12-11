@@ -22,7 +22,7 @@
 
     .container {
       width: 100%;
-      max-width: 1100px;
+      max-width: 900px;
       margin: 24px;
       padding: 24px;
       border-radius: 16px;
@@ -291,51 +291,6 @@
       width: 100%;
     }
 
-    .leader-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.9rem;
-      padding: 4px 0;
-      border-top: 1px dashed #1f2937;
-    }
-
-    .leader-name {
-      color: #e5e7eb;
-    }
-
-    .leader-value {
-      color: #9ca3af;
-    }
-
-    /* layout for main + sidebar */
-    .app-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
-      gap: 16px;
-      align-items: flex-start;
-    }
-
-    .app-main {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .app-side {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    @media (max-width: 900px) {
-      .container {
-        max-width: 100%;
-      }
-      .app-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
     @media (max-width: 600px) {
       .container {
         margin: 16px;
@@ -347,7 +302,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>Energidrikk-teller</h1>
+      <h1>Energidrikk-teller 2026</h1>
       <p class="subtitle">
         Trykk på + hver gang du drikker en enhet.
       </p>
@@ -400,44 +355,38 @@
         <button id="logout-btn" class="secondary">Logg ut</button>
       </div>
 
-      <div class="app-grid">
-        <!-- Venstre side -->
-        <div class="app-main">
-          <!-- Graf -->
-          <div class="card">
-            <h2>Forbruk per måned</h2>
-            <div class="chart-wrapper">
-              <canvas id="monthlyChart"></canvas>
-            </div>
-          </div>
-
-          <!-- Totalpris -->
-          <div class="card">
-            <h2>Totalt forbruk</h2>
-            <p class="price-line" id="price-summary-total"></p>
-            <p class="price-note">Pris per enhet: 29,90 kr</p>
-            <button id="reset-all-btn" class="danger">Fjern alt</button>
-          </div>
-
-          <div>
-            <span class="pill">
-              <span class="pill-dot"></span>
-              Dine energidrikk-enheter
-            </span>
-          </div>
-
-          <div id="drink-list"></div>
-        </div>
-
-        <!-- Høyre side: Leaderboard -->
-        <div class="app-side">
-          <div class="card">
-            <h2>Leaderboard</h2>
-            <p class="price-note">Topp 10 brukere etter totalt antall enheter.</p>
-            <div id="leaderboard-list"></div>
-          </div>
+      <!-- Graf -->
+      <div class="card" style="margin-bottom: 16px;">
+        <h2>Forbruk per måned</h2>
+        <div class="chart-wrapper">
+          <canvas id="monthlyChart"></canvas>
         </div>
       </div>
+
+      <!-- Totalpris -->
+      <div class="card" style="margin-bottom: 16px;">
+        <h2>Totalt forbruk</h2>
+        <p class="price-line" id="price-summary-total"></p>
+        <p class="price-note">Pris per enhet: 29,90 kr</p>
+        <button id="reset-all-btn" class="danger">Fjern alt</button>
+      </div>
+
+      <!-- Vennestats -->
+      <div class="card" style="margin-bottom: 16px;">
+        <h2>Vennestats</h2>
+        <p id="friend-stats-text" class="price-note">
+          Laster vennestats...
+        </p>
+      </div>
+
+      <div>
+        <span class="pill">
+          <span class="pill-dot"></span>
+          Dine energidrikk-enheter
+        </span>
+      </div>
+
+      <div id="drink-list"></div>
     </section>
   </div>
 
@@ -452,6 +401,7 @@
     /***********************
      * 1. Firebase-oppsett *
      ***********************/
+    // BYTT UT HELE DETTE OBJEKTET MED DITT FRA FIREBASE-KONSOLLEN
     const firebaseConfig = {
       apiKey: "AIzaSyAgxiIs24NqgdecwlRNKm6EuAZbfbjgaeg",
       authDomain: "energiteller.firebaseapp.com",
@@ -562,15 +512,15 @@
 
     const priceSummaryTotal = document.getElementById("price-summary-total");
     const resetAllBtn = document.getElementById("reset-all-btn");
-    const leaderboardList = document.getElementById("leaderboard-list");
+    const friendStatsText = document.getElementById("friend-stats-text");
 
     /***********************
      * 4. Tilstand         *
      ***********************/
     let currentUser = null;
-    let counts = {};
-    let monthlyStats = {};
-    let brandState = {};
+    let counts = {};          // key: "brand_flavor" -> number
+    let monthlyStats = {};    // key: "YYYY-MM" -> number
+    let brandState = {};      // remember expanded/collapsed brands
     let monthlyChart = null;
     let totalUnits = 0;
 
@@ -922,18 +872,27 @@
     }
 
     /***********************
-     * 8. Leaderboard      *
+     * 8. Vennestats       *
      ***********************/
-    async function loadLeaderboard() {
-      if (!leaderboardList) return;
-      leaderboardList.textContent = "Laster...";
+    async function loadFriendStats() {
+      if (!friendStatsText) return;
+
+      if (!currentUser || !currentUser.uid) {
+        friendStatsText.textContent = "Logg inn for å se vennestats.";
+        return;
+      }
+
+      friendStatsText.textContent = "Laster vennestats...";
+
       try {
         const snap = await db.collection("users").get();
-        const entries = [];
+        const users = [];
+        let yourTotal = 0;
 
         snap.forEach(function (docSnap) {
           const data = docSnap.data() || {};
           let total = 0;
+
           if (data.counts && typeof data.counts === "object") {
             for (const key in data.counts) {
               if (Object.prototype.hasOwnProperty.call(data.counts, key)) {
@@ -944,38 +903,53 @@
               }
             }
           }
-          const email = shortEmail(data.email || "");
-          entries.push({ email, total });
+
+          users.push({
+            id: docSnap.id,
+            email: data.email || "",
+            total: total
+          });
+
+          if (docSnap.id === currentUser.uid) {
+            yourTotal = total;
+          }
         });
 
-        // sorter lokalt etter total
-        entries.sort((a, b) => b.total - a.total);
-
-        leaderboardList.innerHTML = "";
-        if (entries.length === 0) {
-          leaderboardList.textContent = "Ingen data ennå.";
+        if (users.length === 0) {
+          friendStatsText.textContent = "Ingen brukere funnet ennå.";
           return;
         }
 
-        entries.slice(0, 10).forEach((entry, idx) => {
-          const row = document.createElement("div");
-          row.className = "leader-row";
+        users.sort((a, b) => b.total - a.total);
 
-          const nameSpan = document.createElement("span");
-          nameSpan.className = "leader-name";
-          nameSpan.textContent = (idx + 1) + ". " + (entry.email || "(ukjent)");
+        const yourIndex = users.findIndex(u => u.id === currentUser.uid);
+        const yourRank = yourIndex === -1 ? null : yourIndex + 1;
 
-          const valueSpan = document.createElement("span");
-          valueSpan.className = "leader-value";
-          valueSpan.textContent = entry.total + " enheter";
+        const nonZeroUsers = users.filter(u => u.total > 0);
+        const top = nonZeroUsers[0];
 
-          row.appendChild(nameSpan);
-          row.appendChild(valueSpan);
-          leaderboardList.appendChild(row);
-        });
+        if (!top) {
+          friendStatsText.textContent = "Ingen har logget enheter ennå. Du blir den første!";
+          return;
+        }
+
+        let text = "Du har totalt " + yourTotal + " enheter logget. ";
+
+        if (yourRank != null) {
+          text += "Du er på plass " + yourRank + " av " + users.length + " brukere. ";
+        }
+
+        const topName =
+          top.id === currentUser.uid
+            ? "deg selv"
+            : shortEmail(top.email || "ukjent bruker");
+
+        text += "Toppen er " + topName + " med " + top.total + " enheter.";
+
+        friendStatsText.textContent = text;
       } catch (e) {
-        console.error("Kunne ikke laste leaderboard:", e);
-        leaderboardList.textContent = "Kunne ikke laste leaderboard.";
+        console.error("Kunne ikke laste vennestats:", e);
+        friendStatsText.textContent = "Kunne ikke laste vennestats.";
       }
     }
 
@@ -1000,7 +974,7 @@
       updateMonthlyChart(monthlyStats);
       saveToLocal();
       await saveUserDataToServer();
-      await loadLeaderboard();
+      await loadFriendStats();
     }
 
     if (resetAllBtn) {
@@ -1016,7 +990,7 @@
         updateMonthlyChart(monthlyStats);
         saveToLocal();
         await saveUserDataToServer();
-        await loadLeaderboard();
+        await loadFriendStats();
       });
     }
 
@@ -1067,9 +1041,11 @@
         appSection.classList.remove("hidden");
         welcomeText.textContent = "Innlogget som " + (user.email || "");
 
+        // 1) Lokale data først
         const localData = loadFromLocal();
         applyData(localData);
 
+        // 2) Hent fra server hvis det finnes noe der
         const serverData = await fetchUserDataFromServer();
         if (
           Object.keys(serverData.counts).length > 0 ||
@@ -1084,7 +1060,7 @@
           await saveUserDataToServer();
         }
 
-        await loadLeaderboard();
+        await loadFriendStats();
       } else {
         authSection.classList.remove("hidden");
         appSection.classList.add("hidden");
@@ -1095,7 +1071,9 @@
         totalUnits = 0;
         recalculateTotalsFromCounts();
         updateMonthlyChart(monthlyStats);
-        if (leaderboardList) leaderboardList.textContent = "";
+        if (friendStatsText) {
+          friendStatsText.textContent = "Logg inn for å se vennestats.";
+        }
       }
     });
   </script>
