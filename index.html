@@ -304,7 +304,8 @@
     <header>
       <h1>Energidrikk-teller</h1>
       <p class="subtitle">
-        Trykk på + hver gang du drikker en enhet
+        Logg inn og trykk på + hver gang du drikker en boks.
+        Hver bruker har sin egen oversikt, lagret i skyen.
       </p>
     </header>
 
@@ -467,10 +468,9 @@
         id: "powerade",
         name: "Powerade",
         flavors: [
-          { id: "bla", name: "Blå" } // Powerade blå
-          { id: "gra", name: "Grå" } // Powerade grå
-          { id: "gul", name: "Gul" } // Powerade gul
-          { id: "rod", name: "Rød" } // Powerade rød
+          { id: "bla", name: "Blå" }
+          { id: "gul", name: "Gul" }
+          { id: "gra", name: "Grå" }
         ]
       },
       {
@@ -511,9 +511,9 @@
      ***********************/
     let currentUser = null;
     let counts = {};          // key: "brand_flavor" -> tall
-    let monthlyChart = null;  // Chart.js-instans
-    let brandState = {};      // husker hvilke merker som er åpne
-    let events = [];          // alle +1/-1-hendelser (for graf)
+    let monthlyStats = {};    // key: "YYYY-MM" -> tall
+    let brandState = {};      // husker åpne/lukkede menyer
+    let monthlyChart = null;
 
     /****************************
      * 5. Hjelpefunksjoner      *
@@ -672,93 +672,13 @@
       updatePriceSummary(totalCount);
     }
 
-    function getLocalCountsKey() {
-      if (!currentUser || !currentUser.uid) return null;
-      return "energyCounts_" + currentUser.uid;
+    function getMonthKey(date) {
+      const year = date.getFullYear();
+      const month = date.getMonth() + 1;
+      return year + "-" + String(month).padStart(2, "0");
     }
 
-    function loadCountsFromLocal() {
-      const key = getLocalCountsKey();
-      if (!key) return {};
-      const raw = localStorage.getItem(key);
-      if (!raw) return {};
-      try {
-        const data = JSON.parse(raw);
-        if (data && typeof data === "object") {
-          return data;
-        }
-      } catch (e) {
-        console.error("Kunne ikke lese lokal lagring:", e);
-      }
-      return {};
-    }
-
-    function saveCountsToLocal() {
-      const key = getLocalCountsKey();
-      if (!key) return;
-      try {
-        localStorage.setItem(key, JSON.stringify(counts));
-      } catch (e) {
-        console.error("Kunne ikke lagre lokalt:", e);
-      }
-    }
-
-    async function fetchCountsFromServer() {
-      if (!currentUser || !currentUser.uid) return {};
-      const userRef = db.collection("users").doc(currentUser.uid);
-      try {
-        const snap = await userRef.get();
-        if (snap.exists) {
-          const data = snap.data();
-          if (data && typeof data.counts === "object") {
-            const newCounts = {};
-            for (const key in data.counts) {
-              if (Object.prototype.hasOwnProperty.call(data.counts, key)) {
-                const value = data.counts[key];
-                if (typeof value === "number" && value > 0) {
-                  newCounts[key] = value;
-                }
-              }
-            }
-            return newCounts;
-          }
-        }
-      } catch (e) {
-        console.error("Kunne ikke hente counts fra server:", e);
-      }
-      return {};
-    }
-
-    function applyCounts(newCounts) {
-      counts = newCounts || {};
-      recalculateTotalsFromCounts();
-      saveCountsToLocal();
-    }
-
-    function buildMonthlyCountsFromEvents(eventsList) {
-      const monthlyCounts = {};
-      if (!eventsList) return monthlyCounts;
-
-      eventsList.forEach(function (ev) {
-        if (!ev || typeof ev.delta !== "number") return;
-        const ts = ev.timestamp instanceof Date ? ev.timestamp : null;
-        if (!ts) return;
-        const year = ts.getFullYear();
-        const month = ts.getMonth() + 1;
-        const key = year + "-" + String(month).padStart(2, "0");
-        monthlyCounts[key] = (monthlyCounts[key] || 0) + ev.delta;
-      });
-
-      for (const key in monthlyCounts) {
-        if (Object.prototype.hasOwnProperty.call(monthlyCounts, key)) {
-          if (monthlyCounts[key] < 0) monthlyCounts[key] = 0;
-        }
-      }
-
-      return monthlyCounts;
-    }
-
-    function updateMonthlyChart(monthlyCounts) {
+    function updateMonthlyChart(stats) {
       const canvas = document.getElementById("monthlyChart");
       if (!canvas) return;
       const ctx = canvas.getContext("2d");
@@ -779,8 +699,8 @@
           year: "2-digit"
         });
         labels.push(label);
-        const value = monthlyCounts && monthlyCounts[key] ? monthlyCounts[key] : 0;
-        data.push(value);
+        const value = stats && stats[key] ? stats[key] : 0;
+        data.push(value < 0 ? 0 : value);
       }
 
       if (monthlyChart) {
@@ -821,37 +741,114 @@
       }
     }
 
-    async function loadMonthlyStatsFromEvents() {
-      if (!currentUser || !currentUser.uid) {
-        events = [];
-        updateMonthlyChart({});
-        return;
-      }
-
-      const userRef = db.collection("users").doc(currentUser.uid);
-      events = [];
-      let monthlyCounts = {};
-
-      try {
-        const snap = await userRef
-          .collection("drinks")
-          .orderBy("timestamp", "asc")
-          .get();
-        snap.forEach(function (docSnap) {
-          const data = docSnap.data();
-          const delta = typeof data.delta === "number" ? data.delta : 0;
-          if (!data.timestamp || !data.timestamp.toDate) return;
-          const ts = data.timestamp.toDate();
-          events.push({ delta: delta, timestamp: ts });
-        });
-        monthlyCounts = buildMonthlyCountsFromEvents(events);
-      } catch (e) {
-        console.error("Kunne ikke hente hendelser for graf:", e);
-      }
-
-      updateMonthlyChart(monthlyCounts);
+    /***********************
+     * 6. Lokal lagring    *
+     ***********************/
+    function getLocalKey() {
+      if (!currentUser || !currentUser.uid) return null;
+      return "energyTracker_" + currentUser.uid;
     }
 
+    function loadFromLocal() {
+      const key = getLocalKey();
+      if (!key) return { counts: {}, monthlyStats: {} };
+      const raw = localStorage.getItem(key);
+      if (!raw) return { counts: {}, monthlyStats: {} };
+      try {
+        const data = JSON.parse(raw);
+        const out = { counts: {}, monthlyStats: {} };
+        if (data && typeof data.counts === "object") {
+          for (const k in data.counts) {
+            if (typeof data.counts[k] === "number") {
+              out.counts[k] = data.counts[k];
+            }
+          }
+        }
+        if (data && typeof data.monthlyStats === "object") {
+          for (const k in data.monthlyStats) {
+            if (typeof data.monthlyStats[k] === "number") {
+              out.monthlyStats[k] = data.monthlyStats[k];
+            }
+          }
+        }
+        return out;
+      } catch (e) {
+        console.error("Kunne ikke lese lokal lagring:", e);
+        return { counts: {}, monthlyStats: {} };
+      }
+    }
+
+    function saveToLocal() {
+      const key = getLocalKey();
+      if (!key) return;
+      const payload = { counts, monthlyStats };
+      try {
+        localStorage.setItem(key, JSON.stringify(payload));
+      } catch (e) {
+        console.error("Kunne ikke lagre lokalt:", e);
+      }
+    }
+
+    /***********************
+     * 7. Firestore        *
+     ***********************/
+    async function fetchUserDataFromServer() {
+      if (!currentUser || !currentUser.uid) return { counts: {}, monthlyStats: {} };
+      const userRef = db.collection("users").doc(currentUser.uid);
+      try {
+        const snap = await userRef.get();
+        if (!snap.exists) return { counts: {}, monthlyStats: {} };
+        const data = snap.data();
+        const out = { counts: {}, monthlyStats: {} };
+
+        if (data && typeof data.counts === "object") {
+          for (const k in data.counts) {
+            if (typeof data.counts[k] === "number") {
+              out.counts[k] = data.counts[k];
+            }
+          }
+        }
+        if (data && typeof data.monthlyStats === "object") {
+          for (const k in data.monthlyStats) {
+            if (typeof data.monthlyStats[k] === "number") {
+              out.monthlyStats[k] = data.monthlyStats[k];
+            }
+          }
+        }
+        return out;
+      } catch (e) {
+        console.error("Kunne ikke hente data fra server:", e);
+        return { counts: {}, monthlyStats: {} };
+      }
+    }
+
+    async function saveUserDataToServer() {
+      if (!currentUser || !currentUser.uid) return;
+      const userRef = db.collection("users").doc(currentUser.uid);
+      try {
+        await userRef.set(
+          {
+            counts: counts,
+            monthlyStats: monthlyStats
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        console.error("Kunne ikke lagre til server:", e);
+      }
+    }
+
+    function applyData(data) {
+      counts = data.counts || {};
+      monthlyStats = data.monthlyStats || {};
+      recalculateTotalsFromCounts();
+      updateMonthlyChart(monthlyStats);
+      saveToLocal();
+    }
+
+    /****************************
+     * 8. +1 / -1 og Fjern alt  *
+     ****************************/
     async function addDrink(brandId, flavorId, delta) {
       if (!currentUser || !currentUser.uid) return;
 
@@ -859,38 +856,20 @@
       const current = counts[key] || 0;
       const next = current + delta;
 
-      if (next < 0) {
-        return;
-      }
+      if (next < 0) return;
 
       counts[key] = next;
-      recalculateTotalsFromCounts();
-      saveCountsToLocal();
 
-      // Oppdater graf lokalt umiddelbart
       const now = new Date();
-      events.push({ delta: delta, timestamp: now });
-      const monthlyCounts = buildMonthlyCountsFromEvents(events);
-      updateMonthlyChart(monthlyCounts);
+      const monthKey = getMonthKey(now);
+      monthlyStats[monthKey] = clampNonNegative((monthlyStats[monthKey] || 0) + delta);
 
-      // Lagre til Firestore (counts + event)
-      try {
-        const userRef = db.collection("users").doc(currentUser.uid);
-        await userRef.set({ counts: counts }, { merge: true });
-        await userRef.collection("drinks").add({
-          brandId: brandId,
-          flavorId: flavorId,
-          delta: delta,
-          timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (e) {
-        console.error("Kunne ikke oppdatere i Firestore:", e);
-      }
+      recalculateTotalsFromCounts();
+      updateMonthlyChart(monthlyStats);
+      saveToLocal();
+      await saveUserDataToServer();
     }
 
-    /*****************************
-     * 6. Nullstill alt          *
-     *****************************/
     if (resetAllBtn) {
       resetAllBtn.addEventListener("click", async function () {
         if (!currentUser || !currentUser.uid) return;
@@ -898,29 +877,16 @@
         if (!sure) return;
 
         counts = {};
+        monthlyStats = {};
         recalculateTotalsFromCounts();
-        saveCountsToLocal();
-        events = [];
-        updateMonthlyChart({});
-
-        try {
-          const userRef = db.collection("users").doc(currentUser.uid);
-          await userRef.set({ counts: {} }, { merge: true });
-
-          const snap = await userRef.collection("drinks").get();
-          const batch = db.batch();
-          snap.forEach(function (docSnap) {
-            batch.delete(docSnap.ref);
-          });
-          await batch.commit();
-        } catch (e) {
-          console.error("Kunne ikke fjerne alt:", e);
-        }
+        updateMonthlyChart(monthlyStats);
+        saveToLocal();
+        await saveUserDataToServer();
       });
     }
 
     /*****************************
-     * 7. Innlogging/registrering *
+     * 9. Innlogging/registrering *
      *****************************/
     registerForm.addEventListener("submit", async function (event) {
       event.preventDefault();
@@ -966,33 +932,27 @@
         appSection.classList.remove("hidden");
         welcomeText.textContent = "Innlogget som " + (user.email || "");
 
-        // Start med lokale tall (hvis de finnes)
-        const localCounts = loadCountsFromLocal();
-        applyCounts(localCounts);
+        const localData = loadFromLocal();
+        applyData(localData);
 
-        // Hent counts fra server og la server vinne hvis den har data
-        const serverCounts = await fetchCountsFromServer();
-        if (Object.keys(serverCounts).length > 0) {
-          applyCounts(serverCounts);
-        } else if (Object.keys(localCounts).length > 0) {
-          try {
-            const userRef = db.collection("users").doc(currentUser.uid);
-            await userRef.set({ counts: counts }, { merge: true });
-          } catch (e) {
-            console.error("Kunne ikke sync lokal -> server:", e);
-          }
+        const serverData = await fetchUserDataFromServer();
+        if (Object.keys(serverData.counts).length > 0 || Object.keys(serverData.monthlyStats).length > 0) {
+          applyData(serverData);
+        } else if (
+          Object.keys(localData.counts).length > 0 ||
+          Object.keys(localData.monthlyStats).length > 0
+        ) {
+          await saveUserDataToServer();
         }
-
-        await loadMonthlyStatsFromEvents();
       } else {
         authSection.classList.remove("hidden");
         appSection.classList.add("hidden");
         welcomeText.textContent = "";
         counts = {};
+        monthlyStats = {};
         brandState = {};
-        events = [];
         recalculateTotalsFromCounts();
-        updateMonthlyChart({});
+        updateMonthlyChart(monthlyStats);
       }
     });
   </script>
