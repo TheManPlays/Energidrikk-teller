@@ -96,6 +96,25 @@ matrix[i][j]=b[i-1]==a[j-1]
 return matrix[b.length][a.length];
 }
 
+function calculateScore(entry, inputWords) {
+    let score = 0;
+
+    inputWords.forEach(word => {
+        entry.keywords.forEach(keyword => {
+
+            if(keyword.includes(word)) score += 5;
+            else if(word.includes(keyword)) score += 4;
+            else if(levenshtein(word, keyword) <= 2) score += 3;
+
+        });
+
+        if(entry.title.toLowerCase().includes(word)) score += 2;
+        if(entry.cause.toLowerCase().includes(word)) score += 1;
+    });
+
+    return score;
+}
+
 function searchErrors(){
     const inputRaw = document.getElementById("searchInput").value.toLowerCase().trim();
     const category = document.getElementById("categoryFilter").value;
@@ -103,26 +122,20 @@ function searchErrors(){
     results.innerHTML = "";
 
     if(!inputRaw){
-        results.innerHTML = "<div class='card'>Please enter a search term.</div>";
+        results.innerHTML = "";
         return;
     }
 
     const inputWords = inputRaw.split(/\s+/);
 
-    const matches = errorDatabase.filter(e => {
-
-        const categoryMatch = category === "all" || e.category === category;
-
-        const keywordMatch = inputWords.some(word => 
-            e.keywords.some(keyword => 
-                keyword.includes(word) || 
-                word.includes(keyword) || 
-                levenshtein(word, keyword) <= 2
-            )
-        );
-
-        return categoryMatch && keywordMatch;
-    });
+    let matches = errorDatabase
+        .filter(e => category === "all" || e.category === category)
+        .map(e => ({
+            ...e,
+            score: calculateScore(e, inputWords)
+        }))
+        .filter(e => e.score > 0)
+        .sort((a,b) => b.score - a.score);
 
     if(matches.length === 0){
         results.innerHTML = "<div class='card'>No results found.</div>";
@@ -138,6 +151,10 @@ function searchErrors(){
         </div>`;
     });
 }
+
+// 🔥 LIVE SEARCH
+document.getElementById("searchInput")
+  .addEventListener("input", searchErrors);
 
 </script>
 
