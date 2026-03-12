@@ -1,14 +1,16 @@
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mikrolab</title>
 
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
 <style>
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
+    font-family: 'Inter', sans-serif;
     background: #0f172a;
     color: white;
     text-align: center;
@@ -16,12 +18,17 @@ body {
 }
 
 h1 {
-    font-size: 36px;
+    font-size: 34px;
     margin-bottom: 10px;
 }
 
+.subtitle {
+    color: #94a3b8;
+    font-size: 14px;
+}
+
 .menu {
-    margin-top: 40px;
+    margin-top: 50px;
     display: grid;
     gap: 20px;
     max-width: 500px;
@@ -35,16 +42,54 @@ h1 {
     border-radius: 10px;
     text-decoration: none;
     color: white;
-    transition: 0.2s;
+    border: 1px solid #1f2937;
+    transition: 0.2s ease;
 }
 
 .card:hover {
     background: #334155;
+    border-color: #3b82f6;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.card-desc {
+    font-size: 13px;
+    color: #cbd5e1;
+}
+
+.section {
+    margin-top: 70px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.section-title {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #94a3b8;
+    margin-bottom: 15px;
+}
+
+.about-box {
+    background: #1e293b;
+    padding: 25px;
+    border-radius: 10px;
+    border: 1px solid #1f2937;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #cbd5e1;
 }
 
 .footer {
-    margin-top: 60px;
-    font-size: 14px;
+    margin-top: 80px;
+    font-size: 13px;
     opacity: 0.6;
 }
 </style>
@@ -52,26 +97,37 @@ h1 {
 
 <body>
 
-<h1>🧪 Mikrolab</h1>
-<p>Små digitale verktøy – bygget av en IT-support nerd 😄</p>
+<h1>Mikrolab</h1>
+<div class="subtitle">Small digital tools built by an IT support nerd with a passion for coding</div>
 
 <div class="menu">
 
-<a href="it-tools.html" class="card">
-🖥️ IT Support Tools  
-<br><small>Feilkoder, troubleshooting og mer</small>
-</a>
+    <a href="it-tools.html" class="card">
+        <div class="card-title">IT Support Tools</div>
+        <div class="card-desc">Error codes, troubleshooting and internal utilities</div>
+    </a>
 
-<a href="#" class="card">
-⏱️ Tid & Produktivitet  
-<br><small>Kommer snart</small>
-</a>
+    <a href="#" class="card">
+        <div class="card-title">Time & Productivity</div>
+        <div class="card-desc">Coming soon</div>
+    </a>
 
-<a href="#" class="card">
-🧮 Små hverdagsverktøy  
-<br><small>Kommer snart</small>
-</a>
+    <a href="#" class="card">
+        <div class="card-title">Utility Toolkit</div>
+        <div class="card-desc">Coming soon</div>
+    </a>
 
+</div>
+
+<div class="section">
+    <div class="section-title">About</div>
+    <div class="about-box">
+        Hi — I'm an IT support who genuinely enjoys solving problems.
+        <br><br>
+        Mikrolab is a small side project where I build lightweight tools that make everyday IT work a little easier and more structured.
+        <br><br>
+        I spend most of my time troubleshooting systems and helping users — but I also have a bit of a nerdy passion for writing small pieces of code that solve real support challenges.
+    </div>
 </div>
 
 <div class="footer">
