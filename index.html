@@ -11,7 +11,7 @@
 body {
     margin: 0;
     font-family: 'Inter', sans-serif;
-    background: #0f172a;
+    background: linear-gradient(135deg, #0f172a, #111827);
     color: white;
     text-align: center;
     padding: 60px 20px;
@@ -39,16 +39,18 @@ h1 {
 .card {
     background: #1e293b;
     padding: 25px;
-    border-radius: 10px;
+    border-radius: 14px;
     text-decoration: none;
     color: white;
     border: 1px solid #1f2937;
-    transition: 0.2s ease;
+    transition: all 0.25s ease;
 }
 
 .card:hover {
     background: #334155;
     border-color: #3b82f6;
+    transform: translateY(-4px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
 }
 
 .card-title {
@@ -80,7 +82,7 @@ h1 {
 .about-box {
     background: #1e293b;
     padding: 25px;
-    border-radius: 10px;
+    border-radius: 14px;
     border: 1px solid #1f2937;
     font-size: 14px;
     line-height: 1.6;
@@ -107,14 +109,14 @@ h1 {
         <div class="card-desc">Error codes, troubleshooting and internal utilities</div>
     </a>
 
-    <a href="#" class="card">
-        <div class="card-title">Time & Productivity</div>
-        <div class="card-desc">Coming soon</div>
+    <a href="split-cost.html" class="card">
+        <div class="card-title">Split Cost Calculator</div>
+        <div class="card-desc">Quickly calculate how much each person should pay</div>
     </a>
 
     <a href="#" class="card">
-        <div class="card-title">Utility Toolkit</div>
-        <div class="card-desc">Coming soon</div>
+        <div class="card-title">Time & Productivity</div>
+        <div class="card-desc">More tools coming soon</div>
     </a>
 
 </div>
@@ -122,11 +124,11 @@ h1 {
 <div class="section">
     <div class="section-title">About</div>
     <div class="about-box">
-        Hi — I'm an IT support who genuinely enjoys solving problems.
+        Hi — I'm an IT support professional who genuinely enjoys solving problems.
         <br><br>
         Mikrolab is a small side project where I build lightweight tools that make everyday IT work a little easier and more structured.
         <br><br>
-        I spend most of my time troubleshooting systems and helping users — but I also have a bit of a nerdy passion for writing small pieces of code that solve real support challenges.
+        I spend most of my time troubleshooting systems and helping users — but I also have a nerdy passion for writing small pieces of code that solve real support challenges.
     </div>
 </div>
 
