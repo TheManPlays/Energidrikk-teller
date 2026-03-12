@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="no">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,11 +15,11 @@ body {
 }
 
 .container {
-    max-width: 800px;
+    max-width: 900px;
     margin: auto;
 }
 
-input, select, textarea {
+input, select {
     width: 100%;
     padding: 10px;
     margin: 8px 0;
@@ -45,13 +45,6 @@ button {
     border-left: 4px solid #3b82f6;
 }
 
-.admin-box {
-    background: #111827;
-    padding: 15px;
-    margin-top: 30px;
-    border-radius: 8px;
-}
-
 a { color: #94a3b8; }
 </style>
 </head>
@@ -61,76 +54,34 @@ a { color: #94a3b8; }
 <div class="container">
 
 <h1>🖥️ IT Support Tools</h1>
+<p>Search for common error codes and troubleshooting steps.</p>
 
 <select id="categoryFilter">
-<option value="all">Alle kategorier</option>
+<option value="all">All Categories</option>
 <option value="windows">Windows</option>
+<option value="network">Network</option>
 <option value="printer">Printer</option>
-<option value="network">Nettverk</option>
 </select>
 
-<input type="text" id="searchInput" placeholder="Søk feilkode eller problem...">
-<button onclick="searchErrors()">Søk</button>
+<input type="text" id="searchInput" placeholder="Search error code or issue...">
+<button onclick="searchErrors()">Search</button>
 
 <div id="results"></div>
 
-<hr style="margin:40px 0;">
-
-<h2>🧠 Troubleshooting Guide</h2>
-
-<select id="flowSelect">
-<option value="">Velg problemtype</option>
-<option value="internet">Ingen internett</option>
-<option value="printer">Printer virker ikke</option>
-</select>
-
-<div id="flowOutput"></div>
-
-<hr style="margin:40px 0;">
-
-<button onclick="toggleAdmin()">🔒 Admin-modus</button>
-
-<div id="adminPanel" style="display:none;" class="admin-box">
-
-<h3>Legg til ny feilkode</h3>
-
-<input id="newTitle" placeholder="Tittel">
-<input id="newCategory" placeholder="Kategori (windows/printer/network)">
-<input id="newKeywords" placeholder="Keywords (komma-separert)">
-<textarea id="newCause" placeholder="Årsak"></textarea>
-<textarea id="newFix" placeholder="Løsning"></textarea>
-
-<button onclick="addError()">Lagre</button>
-
-</div>
-
 <br>
-<a href="index.html">← Tilbake</a>
+<a href="index.html">← Back to Home</a>
 
 </div>
 
 <script>
 
-let errorDatabase = JSON.parse(localStorage.getItem("errors")) || [
-{
-title:"0x80070005 – Access Denied",
-category:"windows",
-keywords:["0x80070005","access denied"],
-cause:"Manglende rettigheter.",
-fix:"Kjør som administrator."
-},
-{
-title:"Printer Offline",
-category:"printer",
-keywords:["printer offline","not responding"],
-cause:"Printer mistet tilkobling.",
-fix:"Restart printer og sjekk nettverk."
-}
-];
+let errorDatabase = [];
 
-function saveDB(){
-localStorage.setItem("errors",JSON.stringify(errorDatabase));
-}
+fetch("errors.json")
+  .then(response => response.json())
+  .then(data => {
+      errorDatabase = data;
+  });
 
 function levenshtein(a,b){
 const matrix=[];
@@ -151,6 +102,11 @@ const category=document.getElementById("categoryFilter").value;
 const results=document.getElementById("results");
 results.innerHTML="";
 
+if(!input){
+results.innerHTML="<div class='card'>Please enter a search term.</div>";
+return;
+}
+
 const matches=errorDatabase.filter(e=>{
 const categoryMatch=category==="all"||e.category===category;
 const keywordMatch=e.keywords.some(k=>{
@@ -160,7 +116,7 @@ return categoryMatch&&keywordMatch;
 });
 
 if(matches.length===0){
-results.innerHTML="<div class='card'>Ingen treff.</div>";
+results.innerHTML="<div class='card'>No results found.</div>";
 return;
 }
 
@@ -168,39 +124,10 @@ matches.forEach(e=>{
 results.innerHTML+=`
 <div class="card">
 <strong>${e.title}</strong><br><br>
-<b>Årsak:</b> ${e.cause}<br><br>
-<b>Løsning:</b> ${e.fix}
+<b>Cause:</b> ${e.cause}<br><br>
+<b>Resolution:</b> ${e.fix}
 </div>`;
 });
-}
-
-document.getElementById("flowSelect").addEventListener("change",function(){
-const val=this.value;
-const output=document.getElementById("flowOutput");
-if(val==="internet"){
-output.innerHTML="<div class='card'>1️⃣ Restart router<br>2️⃣ Kjør ipconfig /renew<br>3️⃣ Test annen enhet</div>";
-}
-if(val==="printer"){
-output.innerHTML="<div class='card'>1️⃣ Restart printer<br>2️⃣ Sjekk default printer<br>3️⃣ Reinstaller driver</div>";
-}
-});
-
-function toggleAdmin(){
-const panel=document.getElementById("adminPanel");
-panel.style.display=panel.style.display==="none"?"block":"none";
-}
-
-function addError(){
-const newEntry={
-title:document.getElementById("newTitle").value,
-category:document.getElementById("newCategory").value,
-keywords:document.getElementById("newKeywords").value.split(","),
-cause:document.getElementById("newCause").value,
-fix:document.getElementById("newFix").value
-};
-errorDatabase.push(newEntry);
-saveDB();
-alert("Lagret!");
 }
 
 </script>
