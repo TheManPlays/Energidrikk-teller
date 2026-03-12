@@ -81,7 +81,7 @@ const categoryFilter = document.getElementById("categoryFilter");
 const results = document.getElementById("results");
 
 // Load JSON
-fetch("errors.json")
+fetch("./errors.json")
   .then(response => response.json())
   .then(data => {
       errorDatabase = data;
