@@ -3,12 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mikrolab – Små digitale verktøy</title>
+<title>IT Tools – Mikrolab</title>
 
 <style>
 body {
+    background: #0f172a;
+    color: #e2e8f0;
     font-family: Arial, sans-serif;
-    background: #f4f4f4;
     margin: 0;
     padding: 40px 20px;
     display: flex;
@@ -16,56 +17,57 @@ body {
 }
 
 .container {
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    max-width: 500px;
+    max-width: 700px;
     width: 100%;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.08);
 }
 
 h1 {
     margin-top: 0;
 }
 
-.tool {
-    margin-top: 20px;
-}
-
-input {
+input, select {
     width: 100%;
     padding: 10px;
-    margin: 8px 0;
+    margin: 10px 0;
     border-radius: 6px;
-    border: 1px solid #ccc;
+    border: none;
     font-size: 16px;
 }
 
 button {
     width: 100%;
     padding: 12px;
-    margin-top: 10px;
+    background: #3b82f6;
+    color: white;
     border: none;
     border-radius: 6px;
-    background: black;
-    color: white;
     font-size: 16px;
     cursor: pointer;
 }
 
 button:hover {
-    opacity: 0.85;
+    opacity: 0.9;
 }
 
-.result {
-    margin-top: 15px;
-    font-weight: bold;
-    font-size: 18px;
+.card {
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+    border-left: 4px solid #3b82f6;
 }
-footer {
-    margin-top: 30px;
+
+.category {
     font-size: 12px;
-    color: #666;
+    opacity: 0.7;
+    margin-bottom: 5px;
+}
+
+.back {
+    margin-top: 30px;
+    display: block;
+    color: #94a3b8;
+    text-decoration: none;
 }
 </style>
 </head>
@@ -73,50 +75,110 @@ footer {
 <body>
 
 <div class="container">
-    <h1>🧪 Mikrolab</h1>
-    <p>Små, enkle digitale verktøy.</p>
+    <h1>🖥️ IT Support Tools</h1>
+    <p>Søk etter feilkode eller problem.</p>
 
-    <div class="tool">
-        <h2>⏱ Møte-slutt-tid</h2>
-        
-        <label>Starttid:</label>
-        <input type="time" id="startTime">
+    <select id="categoryFilter">
+        <option value="all">Alle kategorier</option>
+        <option value="windows">Windows</option>
+        <option value="printer">Printer</option>
+        <option value="network">Nettverk</option>
+    </select>
 
-        <label>Varighet (minutter):</label>
-        <input type="number" id="duration" placeholder="f.eks 90">
+    <input type="text" id="searchInput" placeholder="F.eks 0x80070005, printer offline, vpn...">
 
-        <button onclick="calculateEndTime()">Regn ut sluttid</button>
+    <button onclick="searchErrors()">Søk</button>
 
-        <div class="result" id="result"></div>
-    </div>
+    <div id="results"></div>
 
-    <footer>
-        Mikrolab – Et sideprosjekt 🚀
-    </footer>
+    <a href="index.html" class="back">← Tilbake til Mikrolab</a>
 </div>
 
 <script>
-function calculateEndTime() {
-    const startTime = document.getElementById("startTime").value;
-    const duration = parseInt(document.getElementById("duration").value);
 
-    if (!startTime || isNaN(duration)) {
-        document.getElementById("result").innerText = "Fyll inn begge feltene.";
+const errorDatabase = [
+    {
+        keywords: ["0x80070005", "access denied"],
+        title: "0x80070005 – Access Denied",
+        category: "windows",
+        cause: "Manglende rettigheter eller tilgang.",
+        fix: "Kjør som administrator og sjekk NTFS-rettigheter."
+    },
+    {
+        keywords: ["0x80004005", "unspecified error"],
+        title: "0x80004005 – Unspecified Error",
+        category: "windows",
+        cause: "Generisk Windows-feil.",
+        fix: "Restart PC, sjekk Windows Update og antivirus."
+    },
+    {
+        keywords: ["printer offline", "printer not responding"],
+        title: "Printer Offline",
+        category: "printer",
+        cause: "Printer mistet nettverkstilkobling.",
+        fix: "Restart printer, sjekk WiFi/kabel og sett som standard printer."
+    },
+    {
+        keywords: ["vpn not connecting", "vpn error"],
+        title: "VPN kobler ikke til",
+        category: "network",
+        cause: "Feil credentials eller nettverksproblem.",
+        fix: "Sjekk brukernavn/passord og test annen nettverkstilkobling."
+    },
+    {
+        keywords: ["no internet", "limited connection"],
+        title: "Ingen internett",
+        category: "network",
+        cause: "DHCP eller router-problem.",
+        fix: "Restart router og kjør ipconfig /renew."
+    }
+];
+
+function normalize(text) {
+    return text.toLowerCase().trim();
+}
+
+function searchErrors() {
+    const input = normalize(document.getElementById("searchInput").value);
+    const categoryFilter = document.getElementById("categoryFilter").value;
+    const resultsDiv = document.getElementById("results");
+
+    resultsDiv.innerHTML = "";
+
+    if (!input) {
+        resultsDiv.innerHTML = "<div class='card'>Skriv inn en feilkode eller beskrivelse.</div>";
         return;
     }
 
-    const [hours, minutes] = startTime.split(":").map(Number);
-    const totalMinutes = hours * 60 + minutes + duration;
+    const matches = errorDatabase.filter(entry => {
 
-    const endHours = Math.floor((totalMinutes / 60) % 24);
-    const endMinutes = totalMinutes % 60;
+        const categoryMatch = categoryFilter === "all" || entry.category === categoryFilter;
 
-    const formattedHours = String(endHours).padStart(2, "0");
-    const formattedMinutes = String(endMinutes).padStart(2, "0");
+        const keywordMatch = entry.keywords.some(keyword =>
+            input.includes(keyword) || keyword.includes(input)
+        );
 
-    document.getElementById("result").innerText =
-        "Møtet slutter kl. " + formattedHours + ":" + formattedMinutes;
+        return categoryMatch && keywordMatch;
+    });
+
+    if (matches.length === 0) {
+        resultsDiv.innerHTML = "<div class='card'>Ingen treff funnet.</div>";
+        return;
+    }
+
+    matches.forEach(entry => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+            <div class="category">${entry.category.toUpperCase()}</div>
+            <strong>${entry.title}</strong><br><br>
+            <strong>Årsak:</strong> ${entry.cause}<br><br>
+            <strong>Forslag:</strong> ${entry.fix}
+        `;
+        resultsDiv.appendChild(card);
+    });
 }
+
 </script>
 
 </body>
