@@ -97,37 +97,46 @@ return matrix[b.length][a.length];
 }
 
 function searchErrors(){
-const input=document.getElementById("searchInput").value.toLowerCase();
-const category=document.getElementById("categoryFilter").value;
-const results=document.getElementById("results");
-results.innerHTML="";
+    const inputRaw = document.getElementById("searchInput").value.toLowerCase().trim();
+    const category = document.getElementById("categoryFilter").value;
+    const results = document.getElementById("results");
+    results.innerHTML = "";
 
-if(!input){
-results.innerHTML="<div class='card'>Please enter a search term.</div>";
-return;
-}
+    if(!inputRaw){
+        results.innerHTML = "<div class='card'>Please enter a search term.</div>";
+        return;
+    }
 
-const matches=errorDatabase.filter(e=>{
-const categoryMatch=category==="all"||e.category===category;
-const keywordMatch=e.keywords.some(k=>{
-return input.includes(k)||levenshtein(input,k)<3;
-});
-return categoryMatch&&keywordMatch;
-});
+    const inputWords = inputRaw.split(/\s+/);
 
-if(matches.length===0){
-results.innerHTML="<div class='card'>No results found.</div>";
-return;
-}
+    const matches = errorDatabase.filter(e => {
 
-matches.forEach(e=>{
-results.innerHTML+=`
-<div class="card">
-<strong>${e.title}</strong><br><br>
-<b>Cause:</b> ${e.cause}<br><br>
-<b>Resolution:</b> ${e.fix}
-</div>`;
-});
+        const categoryMatch = category === "all" || e.category === category;
+
+        const keywordMatch = inputWords.some(word => 
+            e.keywords.some(keyword => 
+                keyword.includes(word) || 
+                word.includes(keyword) || 
+                levenshtein(word, keyword) <= 2
+            )
+        );
+
+        return categoryMatch && keywordMatch;
+    });
+
+    if(matches.length === 0){
+        results.innerHTML = "<div class='card'>No results found.</div>";
+        return;
+    }
+
+    matches.forEach(e=>{
+        results.innerHTML += `
+        <div class="card">
+            <strong>${e.title}</strong><br><br>
+            <b>Cause:</b> ${e.cause}<br><br>
+            <b>Resolution:</b> ${e.fix}
+        </div>`;
+    });
 }
 
 </script>
