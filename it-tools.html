@@ -71,18 +71,27 @@ a { color: #94a3b8; }
 <br>
 <a href="index.html">← Back to Home</a>
 
-</div>
+</div><script>
 
-<script>
+document.addEventListener("DOMContentLoaded", () => {
 
 let errorDatabase = [];
+const searchInput = document.getElementById("searchInput");
+const categoryFilter = document.getElementById("categoryFilter");
+const results = document.getElementById("results");
 
+// Load JSON
 fetch("errors.json")
   .then(response => response.json())
   .then(data => {
       errorDatabase = data;
+  })
+  .catch(err => {
+      results.innerHTML = "<div class='card'>Error loading database.</div>";
+      console.error(err);
   });
 
+// Levenshtein distance
 function levenshtein(a,b){
 const matrix=[];
 for(let i=0;i<=b.length;i++){matrix[i]=[i]}
@@ -96,16 +105,17 @@ matrix[i][j]=b[i-1]==a[j-1]
 return matrix[b.length][a.length];
 }
 
+// Scoring system
 function calculateScore(entry, inputWords) {
     let score = 0;
 
     inputWords.forEach(word => {
         entry.keywords.forEach(keyword => {
+            const k = keyword.toLowerCase();
 
-            if(keyword.includes(word)) score += 5;
-            else if(word.includes(keyword)) score += 4;
-            else if(levenshtein(word, keyword) <= 2) score += 3;
-
+            if(k.includes(word)) score += 5;
+            else if(word.includes(k)) score += 4;
+            else if(levenshtein(word, k) <= 2) score += 3;
         });
 
         if(entry.title.toLowerCase().includes(word)) score += 2;
@@ -115,14 +125,16 @@ function calculateScore(entry, inputWords) {
     return score;
 }
 
+// Search function
 function searchErrors(){
-    const inputRaw = document.getElementById("searchInput").value.toLowerCase().trim();
-    const category = document.getElementById("categoryFilter").value;
-    const results = document.getElementById("results");
+
+    if(!errorDatabase.length) return;
+
+    const inputRaw = searchInput.value.toLowerCase().trim();
+    const category = categoryFilter.value;
     results.innerHTML = "";
 
     if(!inputRaw){
-        results.innerHTML = "";
         return;
     }
 
@@ -142,7 +154,7 @@ function searchErrors(){
         return;
     }
 
-    matches.forEach(e=>{
+    matches.slice(0, 10).forEach(e=>{
         results.innerHTML += `
         <div class="card">
             <strong>${e.title}</strong><br><br>
@@ -152,9 +164,16 @@ function searchErrors(){
     });
 }
 
-// 🔥 LIVE SEARCH
-document.getElementById("searchInput")
-  .addEventListener("input", searchErrors);
+// Debounce (smooth live search)
+let timeout = null;
+searchInput.addEventListener("input", () => {
+    clearTimeout(timeout);
+    timeout = setTimeout(searchErrors, 200);
+});
+
+categoryFilter.addEventListener("change", searchErrors);
+
+});
 
 </script>
 
