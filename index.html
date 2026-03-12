@@ -3,183 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IT Tools – Mikrolab</title>
+<title>Mikrolab</title>
 
 <style>
 body {
-    background: #0f172a;
-    color: #e2e8f0;
-    font-family: Arial, sans-serif;
     margin: 0;
-    padding: 40px 20px;
-    display: flex;
-    justify-content: center;
-}
-
-.container {
-    max-width: 700px;
-    width: 100%;
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+    padding: 60px 20px;
 }
 
 h1 {
-    margin-top: 0;
+    font-size: 36px;
+    margin-bottom: 10px;
 }
 
-input, select {
-    width: 100%;
-    padding: 10px;
-    margin: 10px 0;
-    border-radius: 6px;
-    border: none;
-    font-size: 16px;
-}
-
-button {
-    width: 100%;
-    padding: 12px;
-    background: #3b82f6;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
-    cursor: pointer;
-}
-
-button:hover {
-    opacity: 0.9;
+.menu {
+    margin-top: 40px;
+    display: grid;
+    gap: 20px;
+    max-width: 500px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .card {
     background: #1e293b;
-    padding: 15px;
-    border-radius: 8px;
-    margin-top: 20px;
-    border-left: 4px solid #3b82f6;
-}
-
-.category {
-    font-size: 12px;
-    opacity: 0.7;
-    margin-bottom: 5px;
-}
-
-.back {
-    margin-top: 30px;
-    display: block;
-    color: #94a3b8;
+    padding: 25px;
+    border-radius: 10px;
     text-decoration: none;
+    color: white;
+    transition: 0.2s;
+}
+
+.card:hover {
+    background: #334155;
+}
+
+.footer {
+    margin-top: 60px;
+    font-size: 14px;
+    opacity: 0.6;
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-    <h1>🖥️ IT Support Tools</h1>
-    <p>Søk etter feilkode eller problem.</p>
+<h1>🧪 Mikrolab</h1>
+<p>Små digitale verktøy – bygget av en IT-support nerd 😄</p>
 
-    <select id="categoryFilter">
-        <option value="all">Alle kategorier</option>
-        <option value="windows">Windows</option>
-        <option value="printer">Printer</option>
-        <option value="network">Nettverk</option>
-    </select>
+<div class="menu">
 
-    <input type="text" id="searchInput" placeholder="F.eks 0x80070005, printer offline, vpn...">
+<a href="it-tools.html" class="card">
+🖥️ IT Support Tools  
+<br><small>Feilkoder, troubleshooting og mer</small>
+</a>
 
-    <button onclick="searchErrors()">Søk</button>
+<a href="#" class="card">
+⏱️ Tid & Produktivitet  
+<br><small>Kommer snart</small>
+</a>
 
-    <div id="results"></div>
+<a href="#" class="card">
+🧮 Små hverdagsverktøy  
+<br><small>Kommer snart</small>
+</a>
 
-    <a href="index.html" class="back">← Tilbake til Mikrolab</a>
 </div>
 
-<script>
-
-const errorDatabase = [
-    {
-        keywords: ["0x80070005", "access denied"],
-        title: "0x80070005 – Access Denied",
-        category: "windows",
-        cause: "Manglende rettigheter eller tilgang.",
-        fix: "Kjør som administrator og sjekk NTFS-rettigheter."
-    },
-    {
-        keywords: ["0x80004005", "unspecified error"],
-        title: "0x80004005 – Unspecified Error",
-        category: "windows",
-        cause: "Generisk Windows-feil.",
-        fix: "Restart PC, sjekk Windows Update og antivirus."
-    },
-    {
-        keywords: ["printer offline", "printer not responding"],
-        title: "Printer Offline",
-        category: "printer",
-        cause: "Printer mistet nettverkstilkobling.",
-        fix: "Restart printer, sjekk WiFi/kabel og sett som standard printer."
-    },
-    {
-        keywords: ["vpn not connecting", "vpn error"],
-        title: "VPN kobler ikke til",
-        category: "network",
-        cause: "Feil credentials eller nettverksproblem.",
-        fix: "Sjekk brukernavn/passord og test annen nettverkstilkobling."
-    },
-    {
-        keywords: ["no internet", "limited connection"],
-        title: "Ingen internett",
-        category: "network",
-        cause: "DHCP eller router-problem.",
-        fix: "Restart router og kjør ipconfig /renew."
-    }
-];
-
-function normalize(text) {
-    return text.toLowerCase().trim();
-}
-
-function searchErrors() {
-    const input = normalize(document.getElementById("searchInput").value);
-    const categoryFilter = document.getElementById("categoryFilter").value;
-    const resultsDiv = document.getElementById("results");
-
-    resultsDiv.innerHTML = "";
-
-    if (!input) {
-        resultsDiv.innerHTML = "<div class='card'>Skriv inn en feilkode eller beskrivelse.</div>";
-        return;
-    }
-
-    const matches = errorDatabase.filter(entry => {
-
-        const categoryMatch = categoryFilter === "all" || entry.category === categoryFilter;
-
-        const keywordMatch = entry.keywords.some(keyword =>
-            input.includes(keyword) || keyword.includes(input)
-        );
-
-        return categoryMatch && keywordMatch;
-    });
-
-    if (matches.length === 0) {
-        resultsDiv.innerHTML = "<div class='card'>Ingen treff funnet.</div>";
-        return;
-    }
-
-    matches.forEach(entry => {
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
-            <div class="category">${entry.category.toUpperCase()}</div>
-            <strong>${entry.title}</strong><br><br>
-            <strong>Årsak:</strong> ${entry.cause}<br><br>
-            <strong>Forslag:</strong> ${entry.fix}
-        `;
-        resultsDiv.appendChild(card);
-    });
-}
-
-</script>
+<div class="footer">
+Mikrolab © 2026
+</div>
 
 </body>
 </html>
