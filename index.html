@@ -193,13 +193,15 @@ async function loadStats(){
     currentStats = snap.data();
   }
 
-  function renderBrands(){
+  renderBrands();
+  updateProgress();
+}
 
+function renderBrands(){
   const brandsContainer = document.getElementById("brands");
   brandsContainer.innerHTML = "";
 
   Object.keys(drinks).forEach(brand=>{
-
     const title=document.createElement("div");
     title.className="brand-title";
     title.innerText=brand;
@@ -229,43 +231,10 @@ async function loadStats(){
     brandsContainer.appendChild(flavorContainer);
   });
 }
-}
-
-function renderBrands(){
-  brands.innerHTML="";
-  Object.keys(drinks).forEach(brand=>{
-    const title=document.createElement("div");
-    title.className="brand-title";
-    title.innerText=brand;
-
-    const flavorContainer=document.createElement("div");
-    flavorContainer.className="hidden";
-
-    title.onclick=()=>flavorContainer.classList.toggle("hidden");
-
-    drinks[brand].forEach(flavor=>{
-      const key=brand+"_"+flavor;
-      const count=currentStats.byFlavor[key]||0;
-
-      const flavorDiv=document.createElement("div");
-      flavorDiv.className="flavor-box";
-      flavorDiv.innerHTML=`
-        ${flavor}
-        <button class="primary" onclick="addDrink('${key}')">+</button>
-        <button class="danger" onclick="removeDrink('${key}')">-</button>
-        <span id="count_${key}">${count}</span>
-      `;
-
-      flavorContainer.appendChild(flavorDiv);
-    });
-
-    brands.appendChild(title);
-    brands.appendChild(flavorContainer);
-  });
-}
 
 function updateProgress(){
   const percent=Math.min((currentStats.total/365)*100,100);
+  const progressBar=document.getElementById("progressBar");
   progressBar.style.width=percent+"%";
   progressBar.innerText=currentStats.total+" stk";
 }
@@ -275,23 +244,29 @@ window.addDrink=async(key)=>{
     total:increment(1),
     [`byFlavor.${key}`]:increment(1)
   });
+
   currentStats.total++;
   currentStats.byFlavor[key]=(currentStats.byFlavor[key]||0)+1;
+
   document.getElementById("count_"+key).innerText=currentStats.byFlavor[key];
   updateProgress();
 };
 
 window.removeDrink=async(key)=>{
   if(!currentStats.byFlavor[key]) return;
+
   await updateDoc(statsRef,{
     total:increment(-1),
     [`byFlavor.${key}`]:increment(-1)
   });
+
   currentStats.total--;
   currentStats.byFlavor[key]--;
+
   document.getElementById("count_"+key).innerText=currentStats.byFlavor[key];
   updateProgress();
 };
+
 </script>
 
 </body>
