@@ -160,12 +160,28 @@ document.addEventListener("DOMContentLoaded", () => {
   };
 
   window.login = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email.value, password.value);
-    } catch {
-      errorMsg.innerText = "Feil e-post eller passord.";
-    }
-  };
+  try {
+    await signInWithEmailAndPassword(auth, email.value, password.value);
+  } catch {
+    errorMsg.innerText = "Feil e-post eller passord.";
+  }
+};
+
+window.register = async () => {
+  if (password.value.length < 6) {
+    errorMsg.innerText = "Passord må være minst 6 tegn.";
+    return;
+  }
+  try {
+    await createUserWithEmailAndPassword(auth, email.value, password.value);
+  } catch {
+    errorMsg.innerText = "Registrering feilet.";
+  }
+};
+
+window.logout = async () => {
+  await signOut(auth);
+};
 
   window.logout = async () => await signOut(auth);
 
