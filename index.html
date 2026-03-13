@@ -136,10 +136,60 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 const drinks = {
-  "Monster": ["Original","Ultra White","Mango Loco"],
-  "Red Bull": ["Original","Sugarfree","Watermelon"],
-  "Burn": ["Original","Apple Kiwi"],
-  "Battery": ["Original","Blueberry","No Sugar"]
+
+  "Monster": [
+    "Monster Original",
+    "Monster Original Sukkerfri",
+    "Monster Lewis Hamilton",
+    "Monster Lewis Hamilton Sukkerfri",
+    "Monster Lando Norris Sukkerfri",
+    "Monster Ultra",
+    "Monster Ultra Paradise",
+    "Monster Ultra Watermelon",
+    "Monster Ultra Gold",
+    "Monster Ultra Fiesta",
+    "Monster Ultra Rosa",
+    "Monster Ultra Black",
+    "Monster Ultra Peachy Keen",
+    "Monster Ultra Strawberry Dreams",
+    "Monster Mango Loco",
+    "Monster Pipeline Punch",
+    "Monster Monarch",
+    "Monster Aussie Lemonade",
+    "Monster Bad Apple",
+    "Monster Rio Punch"
+  ],
+
+  "Red Bull": [
+    "Redbull Original",
+    "Redbull Sukkerfri",
+    "Redbull Yellow Edition Tropisk",
+    "Redbull Blue Edition Blåbær",
+    "Redbull Purple Edition Skogsbær",
+    "Redbull Pink Edition",
+    "Redbull Lilac Edition Lavender",
+    "Redbull Peach Edition",
+    "Redbull Spring Edition"
+  ],
+
+  "Burn": [
+    "Burn Original",
+    "Burn Apple Kiwi",
+    "Burn Fruit Punch",
+    "Burn White Citrus"
+  ],
+
+  "Battery": [
+    "Battery Original",
+    "Battery Peachberry",
+    "Battery Peach + Raspberry",
+    "Battery Fresh",
+    "Battery Blueberry",
+    "Battery Whirl",
+    "Battery Fresh Exotic Fruits",
+    "Battery No Calorie"
+  ]
+
 };
 
 let statsRef;
