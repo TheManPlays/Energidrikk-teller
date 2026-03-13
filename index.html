@@ -138,7 +138,6 @@ button {
     </div>
   </div>
 
-  <!-- 🎰 DAILY CHAOS CARD -->
   <div class="card">
     <h2>🎰 Dagens bivirkninger</h2>
 
@@ -180,32 +179,16 @@ const db = getFirestore(appFirebase);
 /* ---------------- DRINKS ---------------- */
 
 const drinks = {
-  "Monster": [
-    "Original","Original Sukkerfri","Lewis Hamilton","Lewis Hamilton Sukkerfri",
-    "Lando Norris Sukkerfri","Ultra","Ultra Paradise","Ultra Watermelon",
-    "Ultra Gold","Ultra Fiesta","Ultra Rosa","Ultra Black",
-    "Ultra Peachy Keen","Ultra Strawberry Dreams","Mango Loco",
-    "Pipeline Punch","Monarch","Aussie Lemonade","Bad Apple","Rio Punch"
-  ],
-  "Red Bull": [
-    "Original","Sukkerfri","Yellow Edition Tropisk","Blue Edition Blåbær",
-    "Purple Edition Skogsbær","Pink Edition","Lilac Edition Lavender",
-    "Peach Edition","Spring Edition"
-  ],
-  "Burn": [
-    "Original","Apple Kiwi","Fruit Punch","White Citrus"
-  ],
-  "Battery": [
-    "Original","Peachberry","Fresh","Blueberry",
-    "Whirl","Fresh Exotic Fruits","No Calorie"
-  ]
+  "Monster": ["Original","Ultra","Mango Loco","Pipeline Punch"],
+  "Red Bull": ["Original","Sukkerfri","Yellow Edition"],
+  "Burn": ["Original","Apple Kiwi"],
+  "Battery": ["Original","Peachberry"]
 };
-
 
 let statsRef;
 let currentStats = { total:0, byFlavor:{} };
 
-/* ---------------- DAILY CHAOS ---------------- */
+/* ---------------- DAILY CHAOS SYSTEM ---------------- */
 
 const sideEffects = [
   {focus:7,sleep:-5,shake:3,heart:2,text:"Du kan nå høre WiFi-signalet."},
@@ -221,23 +204,43 @@ function loadDailyStats(){
   const stored = JSON.parse(localStorage.getItem("dailyStats"));
 
   if (!stored || stored.date !== today){
-    dailyStats = {date:today,focus:0,sleep:100,shake:0,heart:0};
-    localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
+    dailyStats = { date:today, effects:[] };
   } else dailyStats = stored;
 
-  updateDailyUI();
+  recalcDailyStats();
+}
+
+function saveDailyStats(){
+  localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
+}
+
+function recalcDailyStats(){
+  let focus = 0;
+  let sleep = 100;
+  let shake = 0;
+  let heart = 0;
+
+  dailyStats.effects.forEach(e=>{
+    focus += e.focus;
+    sleep += e.sleep;
+    shake += e.shake;
+    heart += e.heart;
+  });
+
+  sleep = Math.max(0, sleep);
+
+  focusStat.innerText = focus;
+  sleepStat.innerText = sleep;
+  shakeStat.innerText = shake;
+  heartStat.innerText = heart;
+
+  saveDailyStats();
 }
 
 function applyRandomEffect(){
   const effect = sideEffects[Math.floor(Math.random()*sideEffects.length)];
-
-  dailyStats.focus += effect.focus;
-  dailyStats.sleep = Math.max(0, dailyStats.sleep + effect.sleep);
-  dailyStats.shake += effect.shake;
-  dailyStats.heart += effect.heart;
-
-  localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
-  updateDailyUI();
+  dailyStats.effects.push(effect);
+  recalcDailyStats();
 
   const toast = document.getElementById("effectToast");
   toast.innerHTML = `
@@ -249,11 +252,15 @@ function applyRandomEffect(){
   setTimeout(()=> toast.style.opacity = 0, 3000);
 }
 
-function updateDailyUI(){
-  focusStat.innerText = dailyStats.focus;
-  sleepStat.innerText = dailyStats.sleep;
-  shakeStat.innerText = dailyStats.shake;
-  heartStat.innerText = dailyStats.heart;
+function removeLastEffect(){
+  if(dailyStats.effects.length === 0) return;
+  dailyStats.effects.pop();
+  recalcDailyStats();
+
+  const toast = document.getElementById("effectToast");
+  toast.innerHTML = "⏪ Siste bivirkning reversert.";
+  toast.style.opacity = 1;
+  setTimeout(()=> toast.style.opacity = 0, 2000);
 }
 
 /* ---------------- AUTH ---------------- */
@@ -370,6 +377,7 @@ window.removeDrink = async(key)=>{
 
   renderBrands();
   updateProgress();
+  removeLastEffect();
 };
 </script>
 
