@@ -93,17 +93,31 @@ document.addEventListener("DOMContentLoaded", () => {
   /* ===== AUTH STATE ===== */
 
   onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      currentUser = user;
-      document.getElementById("authBox").classList.add("hidden");
-      document.getElementById("app").classList.remove("hidden");
-      document.getElementById("welcomeText").innerText = "Innlogget som: " + user.email;
-      await loadStats();
-    } else {
-      document.getElementById("authBox").classList.remove("hidden");
-      document.getElementById("app").classList.add("hidden");
+  const authBox = document.getElementById("authBox");
+  const appBox = document.getElementById("app");
+  const welcomeText = document.getElementById("welcomeText");
+
+  if (!authBox || !appBox) {
+    console.error("HTML mangler authBox eller app");
+    return;
+  }
+
+  if (user) {
+    currentUser = user;
+
+    authBox.classList.add("hidden");
+    appBox.classList.remove("hidden");
+
+    if (welcomeText) {
+      welcomeText.innerText = "Innlogget som: " + user.email;
     }
-  });
+
+    await loadStats();
+  } else {
+    authBox.classList.remove("hidden");
+    appBox.classList.add("hidden");
+  }
+});
 
 });
 
