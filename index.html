@@ -1,144 +1,237 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Microlab</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-<style>
-body {
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-    background: linear-gradient(135deg, #0f172a, #111827);
-    color: white;
-    text-align: center;
-    padding: 60px 20px;
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  addDoc, 
+  deleteDoc,
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  getDocs,
+  serverTimestamp,
+  increment 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+
+/* 🔥 LIM INN DIN FIREBASE CONFIG */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MSG_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const brands = ["Burn", "Monster", "Battery", "Red Bull"];
+const yearlyGoal = 365;
+
+let currentUser = null;
+let currentStats = null;
+let statsRef = null;
+
+/* =========================
+   AUTH
+========================= */
+
+window.register = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+  // Opprett brukerprofil
+  await setDoc(doc(db, "users", cred.user.uid), {
+    email: email,
+    createdAt: serverTimestamp(),
+    yearlyGoal: 365
+  });
+};
+
+window.login = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  await signInWithEmailAndPassword(auth, email, password);
+};
+
+window.logout = async () => {
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    document.getElementById("authBox").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("welcomeText").innerText = "Innlogget som: " + user.email;
+    await loadStats();
+  } else {
+    document.getElementById("authBox").classList.remove("hidden");
+    document.getElementById("app").classList.add("hidden");
+  }
+});
+
+
+/* =========================
+   LOAD / INIT STATS
+========================= */
+
+async function loadStats() {
+  const year = new Date().getFullYear();
+  statsRef = doc(db, "stats", currentUser.uid + "_" + year);
+
+  const snap = await getDoc(statsRef);
+
+  if (!snap.exists()) {
+    // Opprett tom stats
+    const emptyStats = {
+      userId: currentUser.uid,
+      year: year,
+      total: 0,
+      byBrand: {
+        "Burn": 0,
+        "Monster": 0,
+        "Battery": 0,
+        "Red Bull": 0
+      },
+      monthly: {}
+    };
+
+    await setDoc(statsRef, emptyStats);
+    currentStats = emptyStats;
+  } else {
+    currentStats = snap.data();
+  }
+
+  renderBrands();
+  updateProgress();
 }
 
-h1 {
-    font-size: 34px;
-    margin-bottom: 10px;
+
+/* =========================
+   RENDER UI
+========================= */
+
+function renderBrands() {
+  const container = document.getElementById("brands");
+  container.innerHTML = "";
+
+  brands.forEach(brand => {
+    const count = currentStats.byBrand?.[brand] || 0;
+
+    const div = document.createElement("div");
+    div.className = "brand-box";
+    div.innerHTML = `
+      <h3>${brand}</h3>
+      <p>Antall: <span id="count_${brand}">${count}</span></p>
+      <button onclick="addDrink('${brand}')">+1</button>
+      <button onclick="removeDrink('${brand}')">-1</button>
+    `;
+    container.appendChild(div);
+  });
 }
 
-.subtitle {
-    color: #94a3b8;
-    font-size: 14px;
+function updateProgress() {
+  const total = currentStats.total || 0;
+  const percent = Math.min((total / yearlyGoal) * 100, 100);
+
+  const bar = document.getElementById("progressBar");
+  bar.style.width = percent + "%";
+  bar.innerText = total + " stk";
 }
 
-.menu {
-    margin-top: 50px;
-    display: grid;
-    gap: 20px;
-    max-width: 520px;
-    margin-left: auto;
-    margin-right: auto;
-}
 
-.card {
-    background: #1e293b;
-    padding: 25px;
-    border-radius: 14px;
-    text-decoration: none;
-    color: white;
-    border: 1px solid #1f2937;
-    transition: all 0.25s ease;
-}
+/* =========================
+   ADD DRINK
+========================= */
 
-.card:hover {
-    background: #334155;
-    border-color: #3b82f6;
-    transform: translateY(-4px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-}
+window.addDrink = async (brand) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
 
-.card-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
+  // 1️⃣ Lag drink-event
+  await addDoc(collection(db, "drinks"), {
+    userId: currentUser.uid,
+    brand: brand,
+    createdAt: serverTimestamp(),
+    year: year,
+    month: month,
+    day: day
+  });
 
-.card-desc {
-    font-size: 13px;
-    color: #cbd5e1;
-}
+  // 2️⃣ Oppdater stats
+  await updateDoc(statsRef, {
+    total: increment(1),
+    [`byBrand.${brand}`]: increment(1),
+    [`monthly.${month}`]: increment(1)
+  });
 
-.section {
-    margin-top: 70px;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
-}
+  // 3️⃣ Oppdater lokalt
+  currentStats.total++;
+  currentStats.byBrand[brand]++;
+  currentStats.monthly[month] = (currentStats.monthly[month] || 0) + 1;
 
-.section-title {
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #94a3b8;
-    margin-bottom: 15px;
-}
+  document.getElementById("count_" + brand).innerText = currentStats.byBrand[brand];
+  updateProgress();
+};
 
-.about-box {
-    background: #1e293b;
-    padding: 25px;
-    border-radius: 14px;
-    border: 1px solid #1f2937;
-    font-size: 14px;
-    line-height: 1.6;
-    color: #cbd5e1;
-}
 
-.footer {
-    margin-top: 80px;
-    font-size: 13px;
-    opacity: 0.6;
-}
-</style>
-</head>
+/* =========================
+   REMOVE DRINK (sletter siste)
+========================= */
 
-<body>
+window.removeDrink = async (brand) => {
 
-<h1>Microlab</h1>
-<div class="subtitle">Small digital tools built by an IT support nerd with a passion for coding</div>
+  const q = query(
+    collection(db, "drinks"),
+    where("userId", "==", currentUser.uid),
+    where("brand", "==", brand),
+    orderBy("createdAt", "desc"),
+    limit(1)
+  );
 
-<div class="menu">
+  const snap = await getDocs(q);
 
-    <a href="it-tools.html" class="card">
-        <div class="card-title">IT Support Tools</div>
-        <div class="card-desc">Error codes, troubleshooting and internal utilities</div>
-    </a>
+  if (snap.empty) return;
 
-    <a href="split-cost.html" class="card">
-        <div class="card-title">Split Cost Calculator</div>
-        <div class="card-desc">Quickly calculate how much each person should pay</div>
-    </a>
+  const docToDelete = snap.docs[0];
+  const data = docToDelete.data();
 
-    <a href="password-analyzer.html" class="card">
-        <div class="card-title">🔐 Password Entropy Analyzer</div>
-        <div class="card-desc">Analyze password strength, entropy & crack time</div>
-    </a>
+  await deleteDoc(doc(db, "drinks", docToDelete.id));
 
-    <a href="#" class="card">
-        <div class="card-title">Time & Productivity</div>
-        <div class="card-desc">More tools coming soon</div>
-    </a>
+  await updateDoc(statsRef, {
+    total: increment(-1),
+    [`byBrand.${brand}`]: increment(-1),
+    [`monthly.${data.month}`]: increment(-1)
+  });
 
-</div>
+  // Oppdater lokalt
+  currentStats.total--;
+  currentStats.byBrand[brand]--;
+  currentStats.monthly[data.month]--;
 
-<div class="section">
-    <div class="section-title">About</div>
-    <div class="about-box">
-        Hi — I'm an IT support professional who genuinely enjoys solving problems.
-        <br><br>
-        Mikrolab is a small side project where I build lightweight tools that make everyday IT work a little easier and more structured.
-        <br><br>
-        I spend most of my time troubleshooting systems and helping users — but I also have a nerdy passion for writing small pieces of code that solve real support challenges.
-    </div>
-</div>
+  document.getElementById("count_" + brand).innerText = currentStats.byBrand[brand];
+  updateProgress();
+};
 
-<div class="footer">
-Mikrolab © 2026
-</div>
-
-</body>
-</html>
+</script>
