@@ -193,8 +193,42 @@ async function loadStats(){
     currentStats = snap.data();
   }
 
-  renderBrands();
-  updateProgress();
+  function renderBrands(){
+
+  const brandsContainer = document.getElementById("brands");
+  brandsContainer.innerHTML = "";
+
+  Object.keys(drinks).forEach(brand=>{
+
+    const title=document.createElement("div");
+    title.className="brand-title";
+    title.innerText=brand;
+
+    const flavorContainer=document.createElement("div");
+    flavorContainer.className="hidden";
+
+    title.onclick=()=>flavorContainer.classList.toggle("hidden");
+
+    drinks[brand].forEach(flavor=>{
+      const key=brand+"_"+flavor;
+      const count=currentStats.byFlavor?.[key]||0;
+
+      const flavorDiv=document.createElement("div");
+      flavorDiv.className="flavor-box";
+      flavorDiv.innerHTML=`
+        ${flavor}
+        <button class="primary" onclick="addDrink('${key}')">+</button>
+        <button class="danger" onclick="removeDrink('${key}')">-</button>
+        <span id="count_${key}">${count}</span>
+      `;
+
+      flavorContainer.appendChild(flavorDiv);
+    });
+
+    brandsContainer.appendChild(title);
+    brandsContainer.appendChild(flavorContainer);
+  });
+}
 }
 
 function renderBrands(){
