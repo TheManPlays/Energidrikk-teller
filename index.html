@@ -161,7 +161,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* ---------------- FIREBASE ---------------- */
+/* FIREBASE */
 
 const firebaseConfig = {
   apiKey: "AIzaSyCUpqERB_sfUCetgxWwkynRHBUzKcVdl_8",
@@ -176,7 +176,7 @@ const appFirebase = initializeApp(firebaseConfig);
 const auth = getAuth(appFirebase);
 const db = getFirestore(appFirebase);
 
-/* ---------------- DRINKS ---------------- */
+/* DRINKS */
 
 const drinks = {
   "Monster": ["Original","Ultra","Mango Loco","Pipeline Punch"],
@@ -188,7 +188,7 @@ const drinks = {
 let statsRef;
 let currentStats = { total:0, byFlavor:{} };
 
-/* ---------------- DAILY CHAOS SYSTEM ---------------- */
+/* DAILY EFFECT SYSTEM */
 
 const sideEffects = [
   {focus:7,sleep:-5,shake:3,heart:2,text:"Du kan nå høre WiFi-signalet."},
@@ -229,10 +229,10 @@ function recalcDailyStats(){
 
   sleep = Math.max(0, sleep);
 
-  focusStat.innerText = focus;
-  sleepStat.innerText = sleep;
-  shakeStat.innerText = shake;
-  heartStat.innerText = heart;
+  document.getElementById("focusStat").innerText = focus;
+  document.getElementById("sleepStat").innerText = sleep;
+  document.getElementById("shakeStat").innerText = shake;
+  document.getElementById("heartStat").innerText = heart;
 
   saveDailyStats();
 }
@@ -263,7 +263,42 @@ function removeLastEffect(){
   setTimeout(()=> toast.style.opacity = 0, 2000);
 }
 
-/* ---------------- AUTH ---------------- */
+/* MAKE FUNCTIONS GLOBAL FOR BUTTONS */
+
+async function addDrink(key){
+  await updateDoc(statsRef,{
+    total:increment(1),
+    [`byFlavor.${key}`]:increment(1)
+  });
+
+  currentStats.total++;
+  currentStats.byFlavor[key]=(currentStats.byFlavor[key]||0)+1;
+
+  renderBrands();
+  updateProgress();
+  applyRandomEffect();
+}
+
+async function removeDrink(key){
+  if(!currentStats.byFlavor[key]) return;
+
+  await updateDoc(statsRef,{
+    total:increment(-1),
+    [`byFlavor.${key}`]:increment(-1)
+  });
+
+  currentStats.total--;
+  currentStats.byFlavor[key]--;
+
+  renderBrands();
+  updateProgress();
+  removeLastEffect();
+}
+
+window.addDrink = addDrink;
+window.removeDrink = removeDrink;
+
+/* AUTH */
 
 window.login = async () => {
   try { await signInWithEmailAndPassword(auth, email.value, password.value); }
@@ -294,7 +329,7 @@ onAuthStateChanged(auth, async (user)=>{
   }
 });
 
-/* ---------------- FIRESTORE ---------------- */
+/* FIRESTORE */
 
 async function loadStats(){
   const year = new Date().getFullYear();
@@ -311,7 +346,8 @@ async function loadStats(){
 }
 
 function renderBrands(){
-  brands.innerHTML = "";
+  const container = document.getElementById("brands");
+  container.innerHTML = "";
 
   Object.keys(drinks).forEach(brand=>{
     const title=document.createElement("div");
@@ -337,48 +373,19 @@ function renderBrands(){
           <span>${count}</span>
         </div>
       `;
+
       flavorContainer.appendChild(flavorDiv);
     });
 
-    brands.appendChild(title);
-    brands.appendChild(flavorContainer);
+    container.appendChild(title);
+    container.appendChild(flavorContainer);
   });
 }
 
 function updateProgress(){
-  progressBar.style.width = "100%";
-  progressLabel.innerText = currentStats.total + " stk totalt";
+  document.getElementById("progressBar").style.width = "100%";
+  document.getElementById("progressLabel").innerText = currentStats.total + " stk totalt";
 }
-
-window.addDrink = async(key)=>{
-  await updateDoc(statsRef,{
-    total:increment(1),
-    [`byFlavor.${key}`]:increment(1)
-  });
-
-  currentStats.total++;
-  currentStats.byFlavor[key]=(currentStats.byFlavor[key]||0)+1;
-
-  renderBrands();
-  updateProgress();
-  applyRandomEffect();
-};
-
-window.removeDrink = async(key)=>{
-  if(!currentStats.byFlavor[key]) return;
-
-  await updateDoc(statsRef,{
-    total:increment(-1),
-    [`byFlavor.${key}`]:increment(-1)
-  });
-
-  currentStats.total--;
-  currentStats.byFlavor[key]--;
-
-  renderBrands();
-  updateProgress();
-  removeLastEffect();
-};
 </script>
 
 </body>
