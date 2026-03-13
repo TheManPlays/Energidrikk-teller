@@ -149,30 +149,83 @@ const appFirebase = initializeApp(firebaseConfig);
 const auth = getAuth(appFirebase);
 const db = getFirestore(appFirebase);
 
-const drinks = {
-  "Monster": [
-    "Original","Original Sukkerfri","Lewis Hamilton","Lewis Hamilton Sukkerfri",
-    "Lando Norris Sukkerfri","Ultra","Ultra Paradise","Ultra Watermelon",
-    "Ultra Gold","Ultra Fiesta","Ultra Rosa","Ultra Black",
-    "Ultra Peachy Keen","Ultra Strawberry Dreams","Mango Loco",
-    "Pipeline Punch","Monarch","Aussie Lemonade","Bad Apple","Rio Punch"
-  ],
-  "Red Bull": [
-    "Original","Sukkerfri","Yellow Edition Tropisk","Blue Edition Blåbær",
-    "Purple Edition Skogsbær","Pink Edition","Lilac Edition Lavender",
-    "Peach Edition","Spring Edition"
-  ],
-  "Burn": [
-    "Original","Apple Kiwi","Fruit Punch","White Citrus"
-  ],
-  "Battery": [
-    "Original","Peachberry","Fresh","Blueberry",
-    "Whirl","Fresh Exotic Fruits","No Calorie"
-  ]
-};
-
 let statsRef;
 let currentStats = { total:0, byFlavor:{} };
+
+/* -------------------- 🎰 RANDOM SIDE EFFECT SYSTEM -------------------- */
+
+const sideEffects = [
+  { focus: 7, sleep: -5, shake: 3, heart: 2, text: "Du kan nå høre WiFi-signalet." },
+  { focus: 10, sleep: -8, shake: 5, heart: 4, text: "Du åpnet 12 nye faner." },
+  { focus: 5, sleep: -3, shake: 2, heart: 1, text: "Produktivitet øker mistenkelig." },
+  { focus: 3, sleep: -6, shake: 7, heart: 5, text: "Du vibrerer på molekylært nivå." },
+  { focus: 12, sleep: -10, shake: 8, heart: 6, text: "Overclock mode aktivert." }
+];
+
+let dailyStats = {
+  date: "",
+  focus: 0,
+  sleep: 100,
+  shake: 0,
+  heart: 0
+};
+
+function loadDailyStats(){
+  const today = new Date().toISOString().split("T")[0];
+  const stored = JSON.parse(localStorage.getItem("dailyStats"));
+
+  if (!stored || stored.date !== today){
+    dailyStats = {
+      date: today,
+      focus: 0,
+      sleep: 100,
+      shake: 0,
+      heart: 0
+    };
+    localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
+  } else {
+    dailyStats = stored;
+  }
+
+  updateDailyUI();
+}
+
+function saveDailyStats(){
+  localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
+}
+
+function applyRandomEffect(){
+  const effect = sideEffects[Math.floor(Math.random()*sideEffects.length)];
+
+  dailyStats.focus += effect.focus;
+  dailyStats.sleep += effect.sleep;
+  dailyStats.shake += effect.shake;
+  dailyStats.heart += effect.heart;
+
+  if (dailyStats.sleep < 0) dailyStats.sleep = 0;
+
+  saveDailyStats();
+  updateDailyUI();
+
+  const toast = document.getElementById("effectToast");
+  toast.innerHTML = `
+    ⚡ +${effect.focus} Fokus | ${effect.sleep} Søvn<br>
+    🤝 +${effect.shake} Skjelving | 💓 +${effect.heart} Puls<br>
+    <span style="color:#aaa;">${effect.text}</span>
+  `;
+
+  toast.style.opacity = 1;
+  setTimeout(()=> toast.style.opacity = 0.3, 3000);
+}
+
+function updateDailyUI(){
+  document.getElementById("focusStat").innerText = dailyStats.focus;
+  document.getElementById("sleepStat").innerText = dailyStats.sleep;
+  document.getElementById("shakeStat").innerText = dailyStats.shake;
+  document.getElementById("heartStat").innerText = dailyStats.heart;
+}
+
+/* -------------------- AUTH -------------------- */
 
 window.login = async () => {
   try {
@@ -205,11 +258,14 @@ onAuthStateChanged(auth, async (user) => {
     appBox.classList.remove("hidden");
     welcomeText.innerText = "Innlogget som: " + user.email;
     await loadStats();
+    loadDailyStats();
   } else {
     authBox.classList.remove("hidden");
     appBox.classList.add("hidden");
   }
 });
+
+/* -------------------- FIRESTORE -------------------- */
 
 async function loadStats(){
   const year = new Date().getFullYear();
@@ -254,7 +310,7 @@ function renderBrands(){
         <div>
           <button class="primary" onclick="addDrink('${key}')">+</button>
           <button class="danger" onclick="removeDrink('${key}')">-</button>
-          <span id="count_${key}">${count}</span>
+          <span>${count}</span>
         </div>
       `;
 
@@ -268,12 +324,8 @@ function renderBrands(){
 
 function updateProgress(){
   const total = currentStats.total || 0;
-
-  const progressBar = document.getElementById("progressBar");
-  const progressLabel = document.getElementById("progressLabel");
-
-  progressBar.style.width = "100%";
-  progressLabel.innerText = total + " stk totalt";
+  document.getElementById("progressBar").style.width = "100%";
+  document.getElementById("progressLabel").innerText = total + " stk totalt";
 }
 
 window.addDrink=async(key)=>{
@@ -285,6 +337,8 @@ window.addDrink=async(key)=>{
   currentStats.byFlavor[key]=(currentStats.byFlavor[key]||0)+1;
   renderBrands();
   updateProgress();
+
+  applyRandomEffect(); // 🎰 MAGIC HAPPENS HERE
 };
 
 window.removeDrink=async(key)=>{
