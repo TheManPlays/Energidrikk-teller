@@ -1,3 +1,73 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Energidrikkteller</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: white;
+  text-align: center;
+  margin: 0;
+  padding: 20px;
+}
+
+.hidden {
+  display: none;
+}
+
+input {
+  padding: 10px;
+  margin: 5px;
+  border-radius: 6px;
+  border: none;
+  width: 250px;
+}
+
+button {
+  padding: 10px 15px;
+  margin: 5px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+#progressBar {
+  height: 25px;
+  background: #00c853;
+  margin-top: 15px;
+  line-height: 25px;
+  color: black;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN BOX -->
+<div id="authBox">
+  <h2>Logg inn</h2>
+  <input type="email" id="email" placeholder="E-post">
+  <input type="password" id="password" placeholder="Passord (minst 6 tegn)">
+  <div id="errorMsg" style="color:red;"></div>
+  <button onclick="login()">Logg inn</button>
+  <button onclick="register()">Registrer</button>
+</div>
+
+<!-- APP -->
+<div id="app" class="hidden">
+  <h2 id="welcomeText"></h2>
+  <button onclick="logout()">Logg ut</button>
+
+  <div id="brands"></div>
+
+  <div id="progressBar">0 stk</div>
+</div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { 
@@ -13,12 +83,13 @@ import {
 
 /* 🔥 LIM INN DIN FIREBASE CONFIG */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MSG_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCUpqERB_sfUCetgxWwkynRHBUzKcVdl_8",
+  authDomain: "energidrikk-teller.firebaseapp.com",
+  projectId: "energidrikk-teller",
+  storageBucket: "energidrikk-teller.firebasestorage.app",
+  messagingSenderId: "159436464618",
+  appId: "1:159436464618:web:0ffaff4f0d9e87ddc25293",
+  measurementId: "G-E2M78BPZ26"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -28,9 +99,10 @@ const db = getFirestore(app);
 const brands = ["Burn", "Monster", "Battery", "Red Bull"];
 const yearlyGoal = 365;
 
-let currentUser = null;
 let currentStats = null;
 let statsRef = null;
+
+/* ===== AUTH ===== */
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -38,86 +110,58 @@ document.addEventListener("DOMContentLoaded", () => {
   const passwordInput = document.getElementById("password");
   const errorBox = document.getElementById("errorMsg");
 
-  /* ===== REGISTER ===== */
-
   window.register = async () => {
     errorBox.innerText = "";
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
 
-    if (password.length < 6) {
+    if (passwordInput.value.length < 6) {
       errorBox.innerText = "Passord må være minst 6 tegn.";
       return;
     }
 
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      const cred = await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
 
       await setDoc(doc(db, "users", cred.user.uid), {
-        email: email,
+        email: emailInput.value,
         createdAt: serverTimestamp(),
         yearlyGoal: 365
       });
 
     } catch (error) {
-      if (error.code === "auth/email-already-in-use") {
-        errorBox.innerText = "Denne e-posten er allerede registrert.";
-      } else if (error.code === "auth/invalid-email") {
-        errorBox.innerText = "Ugyldig e-postadresse.";
-      } else {
-        errorBox.innerText = "Noe gikk galt. Prøv igjen.";
-      }
+      errorBox.innerText = "Registrering feilet.";
     }
   };
-
-  /* ===== LOGIN ===== */
 
   window.login = async () => {
     errorBox.innerText = "";
-    const email = emailInput.value.trim();
-    const password = passwordInput.value.trim();
-
     try {
-      await signInWithEmailAndPassword(auth, email, password);
-    } catch (error) {
+      await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
+    } catch {
       errorBox.innerText = "Feil e-post eller passord.";
     }
   };
-
-  /* ===== LOGOUT ===== */
 
   window.logout = async () => {
     await signOut(auth);
   };
 
-  /* ===== AUTH STATE ===== */
-
   onAuthStateChanged(auth, async (user) => {
-  const authBox = document.getElementById("authBox");
-  const appBox = document.getElementById("app");
-  const welcomeText = document.getElementById("welcomeText");
+    const authBox = document.getElementById("authBox");
+    const appBox = document.getElementById("app");
+    const welcomeText = document.getElementById("welcomeText");
 
-  if (!authBox || !appBox) {
-    console.error("HTML mangler authBox eller app");
-    return;
-  }
+    if (!authBox || !appBox) return;
 
-  if (user) {
-    currentUser = user;
-
-    authBox.classList.add("hidden");
-    appBox.classList.remove("hidden");
-
-    if (welcomeText) {
+    if (user) {
+      authBox.classList.add("hidden");
+      appBox.classList.remove("hidden");
       welcomeText.innerText = "Innlogget som: " + user.email;
+      await loadStats();
+    } else {
+      authBox.classList.remove("hidden");
+      appBox.classList.add("hidden");
     }
-
-    await loadStats();
-  } else {
-    authBox.classList.remove("hidden");
-    appBox.classList.add("hidden");
-  }
-});
+  });
 
 });
 
@@ -134,15 +178,9 @@ async function loadStats() {
       userId: auth.currentUser.uid,
       year: year,
       total: 0,
-      byBrand: {
-        Burn: 0,
-        Monster: 0,
-        Battery: 0,
-        "Red Bull": 0
-      },
+      byBrand: { Burn: 0, Monster: 0, Battery: 0, "Red Bull": 0 },
       monthly: {}
     };
-
     await setDoc(statsRef, emptyStats);
     currentStats = emptyStats;
   } else {
@@ -163,12 +201,12 @@ function renderBrands() {
     const count = currentStats.byBrand?.[brand] || 0;
 
     const div = document.createElement("div");
-    div.className = "brand-box";
     div.innerHTML = `
       <h3>${brand}</h3>
       <p>Antall: <span id="count_${brand}">${count}</span></p>
       <button onclick="addDrink('${brand}')">+1</button>
       <button onclick="removeDrink('${brand}')">-1</button>
+      <hr>
     `;
     container.appendChild(div);
   });
@@ -189,7 +227,7 @@ window.addDrink = async (brand) => {
 
   await addDoc(collection(db, "drinks"), {
     userId: auth.currentUser.uid,
-    brand: brand,
+    brand,
     createdAt: serverTimestamp(),
     year: now.getFullYear(),
     month: now.getMonth() + 1,
@@ -198,8 +236,7 @@ window.addDrink = async (brand) => {
 
   await updateDoc(statsRef, {
     total: increment(1),
-    [`byBrand.${brand}`]: increment(1),
-    [`monthly.${now.getMonth() + 1}`]: increment(1)
+    [`byBrand.${brand}`]: increment(1)
   });
 
   currentStats.total++;
@@ -224,14 +261,11 @@ window.removeDrink = async (brand) => {
   if (snap.empty) return;
 
   const drinkDoc = snap.docs[0];
-  const data = drinkDoc.data();
-
   await deleteDoc(drinkDoc.ref);
 
   await updateDoc(statsRef, {
     total: increment(-1),
-    [`byBrand.${brand}`]: increment(-1),
-    [`monthly.${data.month}`]: increment(-1)
+    [`byBrand.${brand}`]: increment(-1)
   });
 
   currentStats.total--;
@@ -241,3 +275,6 @@ window.removeDrink = async (brand) => {
 };
 
 </script>
+
+</body>
+</html>
