@@ -1,144 +1,233 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="no">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Microlab</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<title>Energidrikkteller</title>
 
 <style>
 body {
-    margin: 0;
-    font-family: 'Inter', sans-serif;
-    background: linear-gradient(135deg, #0f172a, #111827);
+    font-family: Arial, sans-serif;
+    background: #111;
     color: white;
     text-align: center;
-    padding: 60px 20px;
+    margin: 0;
 }
 
-h1 {
-    font-size: 34px;
-    margin-bottom: 10px;
-}
-
-.subtitle {
-    color: #94a3b8;
-    font-size: 14px;
-}
-
-.menu {
-    margin-top: 50px;
-    display: grid;
-    gap: 20px;
-    max-width: 520px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.card {
-    background: #1e293b;
-    padding: 25px;
-    border-radius: 14px;
-    text-decoration: none;
-    color: white;
-    border: 1px solid #1f2937;
-    transition: all 0.25s ease;
-}
-
-.card:hover {
-    background: #334155;
-    border-color: #3b82f6;
-    transform: translateY(-4px);
-    box-shadow: 0 10px 25px rgba(0,0,0,0.4);
-}
-
-.card-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 6px;
-}
-
-.card-desc {
-    font-size: 13px;
-    color: #cbd5e1;
-}
-
-.section {
-    margin-top: 70px;
+.container {
     max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
+    margin: auto;
+    padding: 20px;
 }
 
-.section-title {
-    font-size: 14px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: #94a3b8;
-    margin-bottom: 15px;
+h1 { color: #00ff88; }
+
+input {
+    padding: 10px;
+    margin: 5px;
+    border-radius: 6px;
+    border: none;
+    width: 80%;
 }
 
-.about-box {
-    background: #1e293b;
-    padding: 25px;
-    border-radius: 14px;
-    border: 1px solid #1f2937;
-    font-size: 14px;
-    line-height: 1.6;
-    color: #cbd5e1;
+button {
+    padding: 10px 15px;
+    margin: 5px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
-.footer {
-    margin-top: 80px;
-    font-size: 13px;
-    opacity: 0.6;
+.primary { background: #00c853; color: white; }
+.danger { background: #d50000; color: white; }
+
+.brand-box {
+    background: #1e1e1e;
+    padding: 15px;
+    margin: 10px 0;
+    border-radius: 10px;
 }
+
+.progress-container {
+    background: #333;
+    border-radius: 20px;
+    margin-top: 20px;
+    height: 25px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #00ff88, #00c853);
+    line-height: 25px;
+    font-weight: bold;
+    color: black;
+}
+
+.hidden { display: none; }
 </style>
 </head>
-
 <body>
 
-<h1>Microlab</h1>
-<div class="subtitle">Small digital tools built by an IT support nerd with a passion for coding</div>
+<div class="container">
+<h1>Energidrikkteller</h1>
 
-<div class="menu">
-
-    <a href="it-tools.html" class="card">
-        <div class="card-title">IT Support Tools</div>
-        <div class="card-desc">Error codes, troubleshooting and internal utilities</div>
-    </a>
-
-    <a href="split-cost.html" class="card">
-        <div class="card-title">Split Cost Calculator</div>
-        <div class="card-desc">Quickly calculate how much each person should pay</div>
-    </a>
-
-    <a href="password-analyzer.html" class="card">
-        <div class="card-title">🔐 Password Entropy Analyzer</div>
-        <div class="card-desc">Analyze password strength, entropy & crack time</div>
-    </a>
-
-    <a href="#" class="card">
-        <div class="card-title">Time & Productivity</div>
-        <div class="card-desc">More tools coming soon</div>
-    </a>
-
+<div id="authBox">
+    <h2>Logg inn</h2>
+    <input type="email" id="email" placeholder="E-post">
+    <input type="password" id="password" placeholder="Passord">
+    <br>
+    <button class="primary" onclick="login()">Logg inn</button>
+    <button onclick="register()">Registrer</button>
 </div>
 
-<div class="section">
-    <div class="section-title">About</div>
-    <div class="about-box">
-        Hi — I'm an IT support professional who genuinely enjoys solving problems.
-        <br><br>
-        Mikrolab is a small side project where I build lightweight tools that make everyday IT work a little easier and more structured.
-        <br><br>
-        I spend most of my time troubleshooting systems and helping users — but I also have a nerdy passion for writing small pieces of code that solve real support challenges.
+<div id="app" class="hidden">
+    <h2 id="welcomeText"></h2>
+    <button class="danger" onclick="logout()">Logg ut</button>
+
+    <div id="brands"></div>
+
+    <h3>Total i år</h3>
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar">0</div>
     </div>
 </div>
 
-<div class="footer">
-Mikrolab © 2026
 </div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* 🔥 LIM INN DIN FIREBASE CONFIG HER */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_AUTH_DOMAIN",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_STORAGE_BUCKET",
+  messagingSenderId: "YOUR_MSG_ID",
+  appId: "YOUR_APP_ID"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const brands = ["Burn", "Monster", "Battery", "Red Bull"];
+const yearlyGoal = 365;
+let userData = {};
+let userRef = null;
+
+function getYear() {
+    return new Date().getFullYear();
+}
+
+async function loadUserData(uid) {
+    userRef = doc(db, "users", uid);
+    const snap = await getDoc(userRef);
+
+    if (snap.exists()) {
+        userData = snap.data();
+        if (userData.year !== getYear()) {
+            userData = { year: getYear(), counts: {} };
+        }
+    } else {
+        userData = { year: getYear(), counts: {} };
+    }
+
+    brands.forEach(b => {
+        if (!userData.counts[b]) userData.counts[b] = 0;
+    });
+
+    await setDoc(userRef, userData);
+    renderBrands();
+    updateProgress();
+}
+
+async function saveData() {
+    await updateDoc(userRef, userData);
+}
+
+function renderBrands() {
+    const container = document.getElementById("brands");
+    container.innerHTML = "";
+
+    brands.forEach(brand => {
+        const div = document.createElement("div");
+        div.className = "brand-box";
+        div.innerHTML = `
+            <h3>${brand}</h3>
+            <p>Antall: <span id="count_${brand}">${userData.counts[brand]}</span></p>
+            <button class="primary" onclick="addDrink('${brand}')">+1</button>
+            <button class="danger" onclick="removeDrink('${brand}')">-1</button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+window.addDrink = async (brand) => {
+    userData.counts[brand]++;
+    await saveData();
+    document.getElementById("count_" + brand).innerText = userData.counts[brand];
+    updateProgress();
+}
+
+window.removeDrink = async (brand) => {
+    if (userData.counts[brand] > 0) {
+        userData.counts[brand]--;
+        await saveData();
+        document.getElementById("count_" + brand).innerText = userData.counts[brand];
+        updateProgress();
+    }
+}
+
+function updateProgress() {
+    const total = Object.values(userData.counts).reduce((a,b)=>a+b,0);
+    const percent = Math.min((total/yearlyGoal)*100,100);
+    const bar = document.getElementById("progressBar");
+    bar.style.width = percent + "%";
+    bar.innerText = total + " stk";
+}
+
+window.register = async () => {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    try {
+        await createUserWithEmailAndPassword(auth, email, password);
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+window.login = async () => {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+    } catch (e) {
+        alert(e.message);
+    }
+}
+
+window.logout = async () => {
+    await signOut(auth);
+}
+
+onAuthStateChanged(auth, async (user) => {
+    if (user) {
+        document.getElementById("authBox").classList.add("hidden");
+        document.getElementById("app").classList.remove("hidden");
+        document.getElementById("welcomeText").innerText = "Innlogget som: " + user.email;
+        await loadUserData(user.uid);
+    } else {
+        document.getElementById("authBox").classList.remove("hidden");
+        document.getElementById("app").classList.add("hidden");
+    }
+});
+</script>
 
 </body>
 </html>
