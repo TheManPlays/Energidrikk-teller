@@ -217,23 +217,15 @@ async function loadStats(){
   const snap = await getDoc(statsRef);
 
   if (!snap.exists()){
+    currentStats = { total:0, byFlavor:{} };
     await setDoc(statsRef,currentStats);
   } else {
     currentStats = snap.data();
+    if (!currentStats.byFlavor) currentStats.byFlavor = {};
   }
 
   renderBrands();
-  function updateProgress(){
-  const total = currentStats.total || 0;
-
-  const progressBar = document.getElementById("progressBar");
-  const progressLabel = document.getElementById("progressLabel");
-
-  // Fyll baren helt (kun visuell effekt)
-  progressBar.style.width = "100%";
-
-  // Vis kun total
-  progressLabel.innerText = total + " stk totalt";
+  updateProgress();
 }
 
 function renderBrands(){
@@ -276,9 +268,12 @@ function renderBrands(){
 
 function updateProgress(){
   const total = currentStats.total || 0;
-  const percent=Math.min((total/365)*100,100);
-  progressBar.style.width=percent+"%";
-  progressLabel.innerText=total+" / 365";
+
+  const progressBar = document.getElementById("progressBar");
+  const progressLabel = document.getElementById("progressLabel");
+
+  progressBar.style.width = "100%";
+  progressLabel.innerText = total + " stk totalt";
 }
 
 window.addDrink=async(key)=>{
