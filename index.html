@@ -98,6 +98,14 @@ button {
   font-size: 14px;
   color: #aaa;
 }
+
+.toast {
+  margin-bottom:15px;
+  font-weight:600;
+  color:#00ffc3;
+  opacity:0;
+  transition:0.4s ease;
+}
 </style>
 </head>
 
@@ -126,8 +134,26 @@ button {
       <div class="progress-track">
         <div class="progress-fill" id="progressBar"></div>
       </div>
-      <div class="progress-label" id="progressLabel">0 / 5000</div>
+      <div class="progress-label" id="progressLabel">0 stk totalt</div>
     </div>
+  </div>
+
+  <!-- 🎰 DAILY CHAOS CARD -->
+  <div class="card">
+    <h2>🎰 Dagens bivirkninger</h2>
+
+    <div class="toast" id="effectToast"></div>
+
+    <div style="text-align:left; max-width:400px; margin:0 auto;">
+      <div>⚡ Fokus: <span id="focusStat">0</span></div>
+      <div>🌙 Søvn: <span id="sleepStat">100</span></div>
+      <div>🤝 Skjelving: <span id="shakeStat">0</span></div>
+      <div>💓 Hjertebank: <span id="heartStat">0</span></div>
+    </div>
+
+    <p style="margin-top:15px; font-size:12px; color:#aaa;">
+      Nullstilles ved midnatt ⚡
+    </p>
   </div>
 </div>
 
@@ -135,6 +161,8 @@ button {
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* ---------------- FIREBASE ---------------- */
 
 const firebaseConfig = {
   apiKey: "AIzaSyCUpqERB_sfUCetgxWwkynRHBUzKcVdl_8",
@@ -149,37 +177,74 @@ const appFirebase = initializeApp(firebaseConfig);
 const auth = getAuth(appFirebase);
 const db = getFirestore(appFirebase);
 
+/* ---------------- DRINKS ---------------- */
+
 const drinks = {
-  "Monster": [
-    "Original","Original Sukkerfri","Lewis Hamilton","Lewis Hamilton Sukkerfri",
-    "Lando Norris Sukkerfri","Ultra","Ultra Paradise","Ultra Watermelon",
-    "Ultra Gold","Ultra Fiesta","Ultra Rosa","Ultra Black",
-    "Ultra Peachy Keen","Ultra Strawberry Dreams","Mango Loco",
-    "Pipeline Punch","Monarch","Aussie Lemonade","Bad Apple","Rio Punch"
-  ],
-  "Red Bull": [
-    "Original","Sukkerfri","Yellow Edition Tropisk","Blue Edition Blåbær",
-    "Purple Edition Skogsbær","Pink Edition","Lilac Edition Lavender",
-    "Peach Edition","Spring Edition"
-  ],
-  "Burn": [
-    "Original","Apple Kiwi","Fruit Punch","White Citrus"
-  ],
-  "Battery": [
-    "Original","Peachberry","Fresh","Blueberry",
-    "Whirl","Fresh Exotic Fruits","No Calorie"
-  ]
+  "Monster": ["Original","Ultra","Mango Loco","Pipeline Punch"],
+  "Red Bull": ["Original","Sukkerfri","Yellow Edition"],
+  "Burn": ["Original","Apple Kiwi"],
+  "Battery": ["Original","Peachberry"]
 };
 
 let statsRef;
 let currentStats = { total:0, byFlavor:{} };
 
+/* ---------------- DAILY CHAOS ---------------- */
+
+const sideEffects = [
+  {focus:7,sleep:-5,shake:3,heart:2,text:"Du kan nå høre WiFi-signalet."},
+  {focus:10,sleep:-8,shake:5,heart:4,text:"Du åpnet 12 nye faner."},
+  {focus:5,sleep:-3,shake:2,heart:1,text:"Produktivitet øker mistenkelig."},
+  {focus:12,sleep:-10,shake:8,heart:6,text:"Overclock mode aktivert."}
+];
+
+let dailyStats = {};
+
+function loadDailyStats(){
+  const today = new Date().toISOString().split("T")[0];
+  const stored = JSON.parse(localStorage.getItem("dailyStats"));
+
+  if (!stored || stored.date !== today){
+    dailyStats = {date:today,focus:0,sleep:100,shake:0,heart:0};
+    localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
+  } else dailyStats = stored;
+
+  updateDailyUI();
+}
+
+function applyRandomEffect(){
+  const effect = sideEffects[Math.floor(Math.random()*sideEffects.length)];
+
+  dailyStats.focus += effect.focus;
+  dailyStats.sleep = Math.max(0, dailyStats.sleep + effect.sleep);
+  dailyStats.shake += effect.shake;
+  dailyStats.heart += effect.heart;
+
+  localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
+  updateDailyUI();
+
+  const toast = document.getElementById("effectToast");
+  toast.innerHTML = `
+    ⚡ +${effect.focus} Fokus | ${effect.sleep} Søvn<br>
+    🤝 +${effect.shake} Skjelving | 💓 +${effect.heart} Puls<br>
+    <span style="color:#aaa;">${effect.text}</span>
+  `;
+  toast.style.opacity = 1;
+  setTimeout(()=> toast.style.opacity = 0, 3000);
+}
+
+function updateDailyUI(){
+  focusStat.innerText = dailyStats.focus;
+  sleepStat.innerText = dailyStats.sleep;
+  shakeStat.innerText = dailyStats.shake;
+  heartStat.innerText = dailyStats.heart;
+}
+
+/* ---------------- AUTH ---------------- */
+
 window.login = async () => {
-  try {
-    await signInWithEmailAndPassword(auth, email.value, password.value);
-  } catch {
-    errorMsg.innerText = "Feil e-post eller passord.";
-  }
+  try { await signInWithEmailAndPassword(auth, email.value, password.value); }
+  catch { errorMsg.innerText = "Feil e-post eller passord."; }
 };
 
 window.register = async () => {
@@ -187,29 +252,26 @@ window.register = async () => {
     errorMsg.innerText = "Passord må være minst 6 tegn.";
     return;
   }
-  try {
-    await createUserWithEmailAndPassword(auth, email.value, password.value);
-  } catch {
-    errorMsg.innerText = "Registrering feilet.";
-  }
+  try { await createUserWithEmailAndPassword(auth, email.value, password.value); }
+  catch { errorMsg.innerText = "Registrering feilet."; }
 };
 
 window.logout = async () => await signOut(auth);
 
-onAuthStateChanged(auth, async (user) => {
-  const authBox = document.getElementById("authBox");
-  const appBox = document.getElementById("app");
-
-  if (user) {
+onAuthStateChanged(auth, async (user)=>{
+  if(user){
     authBox.classList.add("hidden");
-    appBox.classList.remove("hidden");
+    app.classList.remove("hidden");
     welcomeText.innerText = "Innlogget som: " + user.email;
     await loadStats();
+    loadDailyStats();
   } else {
     authBox.classList.remove("hidden");
-    appBox.classList.add("hidden");
+    app.classList.add("hidden");
   }
 });
+
+/* ---------------- FIRESTORE ---------------- */
 
 async function loadStats(){
   const year = new Date().getFullYear();
@@ -219,18 +281,14 @@ async function loadStats(){
   if (!snap.exists()){
     currentStats = { total:0, byFlavor:{} };
     await setDoc(statsRef,currentStats);
-  } else {
-    currentStats = snap.data();
-    if (!currentStats.byFlavor) currentStats.byFlavor = {};
-  }
+  } else currentStats = snap.data();
 
   renderBrands();
   updateProgress();
 }
 
 function renderBrands(){
-  const container = document.getElementById("brands");
-  container.innerHTML = "";
+  brands.innerHTML = "";
 
   Object.keys(drinks).forEach(brand=>{
     const title=document.createElement("div");
@@ -239,7 +297,6 @@ function renderBrands(){
 
     const flavorContainer=document.createElement("div");
     flavorContainer.className="hidden";
-
     title.onclick=()=>flavorContainer.classList.toggle("hidden");
 
     drinks[brand].forEach(flavor=>{
@@ -254,47 +311,47 @@ function renderBrands(){
         <div>
           <button class="primary" onclick="addDrink('${key}')">+</button>
           <button class="danger" onclick="removeDrink('${key}')">-</button>
-          <span id="count_${key}">${count}</span>
+          <span>${count}</span>
         </div>
       `;
-
       flavorContainer.appendChild(flavorDiv);
     });
 
-    container.appendChild(title);
-    container.appendChild(flavorContainer);
+    brands.appendChild(title);
+    brands.appendChild(flavorContainer);
   });
 }
 
 function updateProgress(){
-  const total = currentStats.total || 0;
-
-  const progressBar = document.getElementById("progressBar");
-  const progressLabel = document.getElementById("progressLabel");
-
   progressBar.style.width = "100%";
-  progressLabel.innerText = total + " stk totalt";
+  progressLabel.innerText = currentStats.total + " stk totalt";
 }
 
-window.addDrink=async(key)=>{
+window.addDrink = async(key)=>{
   await updateDoc(statsRef,{
     total:increment(1),
     [`byFlavor.${key}`]:increment(1)
   });
+
   currentStats.total++;
   currentStats.byFlavor[key]=(currentStats.byFlavor[key]||0)+1;
+
   renderBrands();
   updateProgress();
+  applyRandomEffect();
 };
 
-window.removeDrink=async(key)=>{
+window.removeDrink = async(key)=>{
   if(!currentStats.byFlavor[key]) return;
+
   await updateDoc(statsRef,{
     total:increment(-1),
     [`byFlavor.${key}`]:increment(-1)
   });
+
   currentStats.total--;
   currentStats.byFlavor[key]--;
+
   renderBrands();
   updateProgress();
 };
