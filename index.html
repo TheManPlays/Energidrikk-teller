@@ -8,25 +8,24 @@
 <style>
 body {
   font-family: Arial, sans-serif;
-  background: linear-gradient(135deg, #111, #1c1c1c);
+  background: linear-gradient(135deg, #0f0f0f, #1c1c1c);
   color: white;
   text-align: center;
   margin: 0;
   padding: 20px;
 }
 
-h1 {
-  color: #00ff88;
-}
+h1 { color: #00ff88; }
 
 .hidden { display: none; }
 
 .card {
   background: #1e1e1e;
   padding: 20px;
-  border-radius: 12px;
+  border-radius: 15px;
   margin: 15px auto;
-  max-width: 400px;
+  max-width: 500px;
+  box-shadow: 0 0 20px rgba(0,255,136,0.1);
 }
 
 input {
@@ -38,8 +37,8 @@ input {
 }
 
 button {
-  padding: 8px 14px;
-  margin: 5px;
+  padding: 6px 12px;
+  margin: 4px;
   border-radius: 6px;
   border: none;
   cursor: pointer;
@@ -48,11 +47,16 @@ button {
 .primary { background: #00c853; color: white; }
 .danger { background: #d50000; color: white; }
 
-.brand {
+.brand-header {
   background: #2a2a2a;
-  padding: 15px;
-  margin: 10px 0;
+  padding: 12px;
   border-radius: 10px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.flavor {
+  margin: 6px 0;
 }
 
 .progress-container {
@@ -113,12 +117,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 import { 
-  getFirestore, doc, setDoc, getDoc, updateDoc,
-  addDoc, deleteDoc, collection, query, where,
-  orderBy, limit, getDocs, serverTimestamp, increment 
+  getFirestore, doc, setDoc, getDoc, updateDoc, increment 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* LIM INN DIN FIREBASE CONFIG */
+/* 🔥 LIM INN DIN FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCUpqERB_sfUCetgxWwkynRHBUzKcVdl_8",
   authDomain: "energidrikk-teller.firebaseapp.com",
@@ -133,11 +135,17 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-const brands = ["Burn", "Monster", "Battery", "Red Bull"];
 const yearlyGoal = 365;
 
-let statsRef;
+const drinks = {
+  "Monster": ["Original", "Ultra White", "Mango Loco"],
+  "Red Bull": ["Original", "Sugarfree", "Watermelon"],
+  "Burn": ["Original", "Apple Kiwi"],
+  "Battery": ["Original", "No Sugar", "Blueberry"]
+};
+
 let currentStats;
+let statsRef;
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -153,14 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      const cred = await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
-
-      await setDoc(doc(db, "users", cred.user.uid), {
-        email: emailInput.value,
-        createdAt: serverTimestamp(),
-        yearlyGoal: 365
-      });
-
+      await createUserWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
     } catch {
       errorBox.innerText = "Registrering feilet.";
     }
@@ -182,8 +183,6 @@ document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (user) => {
     const authBox = document.getElementById("authBox");
     const appBox = document.getElementById("app");
-
-    if (!authBox || !appBox) return;
 
     if (user) {
       authBox.classList.add("hidden");
@@ -207,12 +206,7 @@ async function loadStats() {
   const snap = await getDoc(statsRef);
 
   if (!snap.exists()) {
-    currentStats = {
-      userId: auth.currentUser.uid,
-      year,
-      total: 0,
-      byBrand: { Burn: 0, Monster: 0, Battery: 0, "Red Bull": 0 }
-    };
+    currentStats = { total: 0, byFlavor: {} };
     await setDoc(statsRef, currentStats);
   } else {
     currentStats = snap.data();
@@ -228,18 +222,39 @@ function renderBrands() {
   const container = document.getElementById("brands");
   container.innerHTML = "";
 
-  brands.forEach(brand => {
-    const count = currentStats.byBrand[brand] || 0;
+  Object.keys(drinks).forEach(brand => {
 
-    const div = document.createElement("div");
-    div.className = "brand";
-    div.innerHTML = `
-      <h3>${brand}</h3>
-      <p>Antall: <span id="count_${brand}">${count}</span></p>
-      <button class="primary" onclick="addDrink('${brand}')">+</button>
-      <button class="danger" onclick="removeDrink('${brand}')">-</button>
-    `;
-    container.appendChild(div);
+    const brandHeader = document.createElement("div");
+    brandHeader.className = "brand-header";
+    brandHeader.innerText = brand;
+
+    const flavorContainer = document.createElement("div");
+    flavorContainer.className = "hidden";
+
+    brandHeader.onclick = () => {
+      flavorContainer.classList.toggle("hidden");
+    };
+
+    drinks[brand].forEach(flavor => {
+
+      const key = brand + "_" + flavor;
+      const count = currentStats.byFlavor[key] || 0;
+
+      const flavorDiv = document.createElement("div");
+      flavorDiv.className = "flavor";
+
+      flavorDiv.innerHTML = `
+        ${flavor}
+        <button class="primary" onclick="addDrink('${key}')">+</button>
+        <button class="danger" onclick="removeDrink('${key}')">-</button>
+        <span id="count_${key}">${count}</span>
+      `;
+
+      flavorContainer.appendChild(flavorDiv);
+    });
+
+    container.appendChild(brandHeader);
+    container.appendChild(flavorContainer);
   });
 }
 
@@ -253,33 +268,36 @@ function updateProgress() {
 
 /* ADD */
 
-window.addDrink = async (brand) => {
+window.addDrink = async (key) => {
   await updateDoc(statsRef, {
     total: increment(1),
-    [`byBrand.${brand}`]: increment(1)
+    [`byFlavor.${key}`]: increment(1)
   });
 
   currentStats.total++;
-  currentStats.byBrand[brand]++;
-  document.getElementById("count_" + brand).innerText = currentStats.byBrand[brand];
+  currentStats.byFlavor[key] = (currentStats.byFlavor[key] || 0) + 1;
+
+  document.getElementById("count_" + key).innerText = currentStats.byFlavor[key];
   updateProgress();
 };
 
 /* REMOVE */
 
-window.removeDrink = async (brand) => {
-  if (currentStats.byBrand[brand] <= 0) return;
+window.removeDrink = async (key) => {
+  if (!currentStats.byFlavor[key] || currentStats.byFlavor[key] <= 0) return;
 
   await updateDoc(statsRef, {
     total: increment(-1),
-    [`byBrand.${brand}`]: increment(-1)
+    [`byFlavor.${key}`]: increment(-1)
   });
 
   currentStats.total--;
-  currentStats.byBrand[brand]--;
-  document.getElementById("count_" + brand).innerText = currentStats.byBrand[brand];
+  currentStats.byFlavor[key]--;
+
+  document.getElementById("count_" + key).innerText = currentStats.byFlavor[key];
   updateProgress();
 };
+
 </script>
 
 </body>
