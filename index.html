@@ -192,20 +192,17 @@ const drinks = {
     "Purple Edition Skogsbær","Pink Edition","Lilac Edition Lavender",
     "Peach Edition","Spring Edition"
   ],
-  "Burn": [
-    "Original","Apple Kiwi","Fruit Punch","White Citrus"
-  ],
+  "Burn": ["Original","Apple Kiwi","Fruit Punch","White Citrus"],
   "Battery": [
     "Original","Peachberry","Fresh","Blueberry",
     "Whirl","Fresh Exotic Fruits","No Calorie"
   ]
 };
 
-
 let statsRef;
 let currentStats = { total:0, byFlavor:{} };
 
-/* ---------------- DAILY CHAOS ---------------- */
+/* ---------------- DAILY CHAOS (REVERSERBAR) ---------------- */
 
 const sideEffects = [
   {focus:7,sleep:-5,shake:3,heart:2,text:"Du kan nå høre WiFi-signalet."},
@@ -221,23 +218,45 @@ function loadDailyStats(){
   const stored = JSON.parse(localStorage.getItem("dailyStats"));
 
   if (!stored || stored.date !== today){
-    dailyStats = {date:today,focus:0,sleep:100,shake:0,heart:0};
-    localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
-  } else dailyStats = stored;
+    dailyStats = { date: today, effects: [] };
+  } else {
+    dailyStats = stored;
+  }
 
-  updateDailyUI();
+  recalcDailyStats();
+}
+
+function saveDailyStats(){
+  localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
+}
+
+function recalcDailyStats(){
+  let focus = 0;
+  let sleep = 100;
+  let shake = 0;
+  let heart = 0;
+
+  dailyStats.effects.forEach(e=>{
+    focus += e.focus;
+    sleep += e.sleep;
+    shake += e.shake;
+    heart += e.heart;
+  });
+
+  sleep = Math.max(0, sleep);
+
+  document.getElementById("focusStat").innerText = focus;
+  document.getElementById("sleepStat").innerText = sleep;
+  document.getElementById("shakeStat").innerText = shake;
+  document.getElementById("heartStat").innerText = heart;
+
+  saveDailyStats();
 }
 
 function applyRandomEffect(){
   const effect = sideEffects[Math.floor(Math.random()*sideEffects.length)];
-
-  dailyStats.focus += effect.focus;
-  dailyStats.sleep = Math.max(0, dailyStats.sleep + effect.sleep);
-  dailyStats.shake += effect.shake;
-  dailyStats.heart += effect.heart;
-
-  localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
-  updateDailyUI();
+  dailyStats.effects.push(effect);
+  recalcDailyStats();
 
   const toast = document.getElementById("effectToast");
   toast.innerHTML = `
@@ -249,11 +268,15 @@ function applyRandomEffect(){
   setTimeout(()=> toast.style.opacity = 0, 3000);
 }
 
-function updateDailyUI(){
-  focusStat.innerText = dailyStats.focus;
-  sleepStat.innerText = dailyStats.sleep;
-  shakeStat.innerText = dailyStats.shake;
-  heartStat.innerText = dailyStats.heart;
+function removeLastEffect(){
+  if(dailyStats.effects.length === 0) return;
+  dailyStats.effects.pop();
+  recalcDailyStats();
+
+  const toast = document.getElementById("effectToast");
+  toast.innerHTML = "⏪ Siste bivirkning reversert.";
+  toast.style.opacity = 1;
+  setTimeout(()=> toast.style.opacity = 0, 2000);
 }
 
 /* ---------------- AUTH ---------------- */
@@ -304,7 +327,8 @@ async function loadStats(){
 }
 
 function renderBrands(){
-  brands.innerHTML = "";
+  const container = document.getElementById("brands");
+  container.innerHTML = "";
 
   Object.keys(drinks).forEach(brand=>{
     const title=document.createElement("div");
@@ -333,17 +357,19 @@ function renderBrands(){
       flavorContainer.appendChild(flavorDiv);
     });
 
-    brands.appendChild(title);
-    brands.appendChild(flavorContainer);
+    container.appendChild(title);
+    container.appendChild(flavorContainer);
   });
 }
 
 function updateProgress(){
-  progressBar.style.width = "100%";
-  progressLabel.innerText = currentStats.total + " stk totalt";
+  document.getElementById("progressBar").style.width = "100%";
+  document.getElementById("progressLabel").innerText = currentStats.total + " stk totalt";
 }
 
-window.addDrink = async(key)=>{
+/* ---------------- GLOBAL FUNCTIONS ---------------- */
+
+async function addDrink(key){
   await updateDoc(statsRef,{
     total:increment(1),
     [`byFlavor.${key}`]:increment(1)
@@ -355,9 +381,9 @@ window.addDrink = async(key)=>{
   renderBrands();
   updateProgress();
   applyRandomEffect();
-};
+}
 
-window.removeDrink = async(key)=>{
+async function removeDrink(key){
   if(!currentStats.byFlavor[key]) return;
 
   await updateDoc(statsRef,{
@@ -370,7 +396,11 @@ window.removeDrink = async(key)=>{
 
   renderBrands();
   updateProgress();
-};
+  removeLastEffect();
+}
+
+window.addDrink = addDrink;
+window.removeDrink = removeDrink;
 </script>
 
 </body>
