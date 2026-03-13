@@ -223,7 +223,17 @@ async function loadStats(){
   }
 
   renderBrands();
-  updateProgress();
+  function updateProgress(){
+  const total = currentStats.total || 0;
+
+  const progressBar = document.getElementById("progressBar");
+  const progressLabel = document.getElementById("progressLabel");
+
+  // Fyll baren helt (kun visuell effekt)
+  progressBar.style.width = "100%";
+
+  // Vis kun total
+  progressLabel.innerText = total + " stk totalt";
 }
 
 function renderBrands(){
