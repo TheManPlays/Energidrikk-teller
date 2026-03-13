@@ -180,11 +180,27 @@ const db = getFirestore(appFirebase);
 /* ---------------- DRINKS ---------------- */
 
 const drinks = {
-  "Monster": ["Original","Ultra","Mango Loco","Pipeline Punch"],
-  "Red Bull": ["Original","Sukkerfri","Yellow Edition"],
-  "Burn": ["Original","Apple Kiwi"],
-  "Battery": ["Original","Peachberry"]
+  "Monster": [
+    "Original","Original Sukkerfri","Lewis Hamilton","Lewis Hamilton Sukkerfri",
+    "Lando Norris Sukkerfri","Ultra","Ultra Paradise","Ultra Watermelon",
+    "Ultra Gold","Ultra Fiesta","Ultra Rosa","Ultra Black",
+    "Ultra Peachy Keen","Ultra Strawberry Dreams","Mango Loco",
+    "Pipeline Punch","Monarch","Aussie Lemonade","Bad Apple","Rio Punch"
+  ],
+  "Red Bull": [
+    "Original","Sukkerfri","Yellow Edition Tropisk","Blue Edition Blåbær",
+    "Purple Edition Skogsbær","Pink Edition","Lilac Edition Lavender",
+    "Peach Edition","Spring Edition"
+  ],
+  "Burn": [
+    "Original","Apple Kiwi","Fruit Punch","White Citrus"
+  ],
+  "Battery": [
+    "Original","Peachberry","Fresh","Blueberry",
+    "Whirl","Fresh Exotic Fruits","No Calorie"
+  ]
 };
+
 
 let statsRef;
 let currentStats = { total:0, byFlavor:{} };
