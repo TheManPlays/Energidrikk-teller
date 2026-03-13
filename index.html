@@ -3,69 +3,106 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Energidrikkteller</title>
+<title>Energidrikk Teller</title>
 
 <style>
 body {
   font-family: Arial, sans-serif;
-  background: #111;
+  background: linear-gradient(135deg, #111, #1c1c1c);
   color: white;
   text-align: center;
   margin: 0;
   padding: 20px;
 }
 
-.hidden {
-  display: none;
+h1 {
+  color: #00ff88;
+}
+
+.hidden { display: none; }
+
+.card {
+  background: #1e1e1e;
+  padding: 20px;
+  border-radius: 12px;
+  margin: 15px auto;
+  max-width: 400px;
 }
 
 input {
   padding: 10px;
-  margin: 5px;
+  margin: 8px 0;
   border-radius: 6px;
   border: none;
-  width: 250px;
+  width: 90%;
 }
 
 button {
-  padding: 10px 15px;
+  padding: 8px 14px;
   margin: 5px;
-  border-radius: 8px;
+  border-radius: 6px;
   border: none;
   cursor: pointer;
 }
 
-#progressBar {
-  height: 25px;
-  background: #00c853;
+.primary { background: #00c853; color: white; }
+.danger { background: #d50000; color: white; }
+
+.brand {
+  background: #2a2a2a;
+  padding: 15px;
+  margin: 10px 0;
+  border-radius: 10px;
+}
+
+.progress-container {
+  background: #333;
+  border-radius: 20px;
   margin-top: 15px;
+  height: 25px;
+  overflow: hidden;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00ff88, #00c853);
   line-height: 25px;
-  color: black;
   font-weight: bold;
+  color: black;
 }
 </style>
 </head>
 
 <body>
 
-<!-- LOGIN BOX -->
-<div id="authBox">
+<h1>Energidrikk Teller</h1>
+
+<!-- LOGIN -->
+<div id="authBox" class="card">
   <h2>Logg inn</h2>
   <input type="email" id="email" placeholder="E-post">
   <input type="password" id="password" placeholder="Passord (minst 6 tegn)">
-  <div id="errorMsg" style="color:red;"></div>
-  <button onclick="login()">Logg inn</button>
-  <button onclick="register()">Registrer</button>
+  <small style="color:#aaa;">Passord må være minst 6 tegn</small>
+  <div id="errorMsg" style="color:red; margin-top:10px;"></div>
+  <button class="primary" onclick="login()">Logg inn</button>
+  <p>Har du ikke konto?</p>
+  <button onclick="register()">Opprett konto</button>
 </div>
 
 <!-- APP -->
 <div id="app" class="hidden">
-  <h2 id="welcomeText"></h2>
-  <button onclick="logout()">Logg ut</button>
+  <div class="card">
+    <h2 id="welcomeText"></h2>
+    <button class="danger" onclick="logout()">Logg ut</button>
 
-  <div id="brands"></div>
+    <div id="brands"></div>
 
-  <div id="progressBar">0 stk</div>
+    <h3>Total i år</h3>
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar">0</div>
+    </div>
+  </div>
 </div>
 
 <script type="module">
@@ -81,7 +118,7 @@ import {
   orderBy, limit, getDocs, serverTimestamp, increment 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* 🔥 LIM INN DIN FIREBASE CONFIG */
+/* LIM INN DIN FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "AIzaSyCUpqERB_sfUCetgxWwkynRHBUzKcVdl_8",
   authDomain: "energidrikk-teller.firebaseapp.com",
@@ -99,10 +136,8 @@ const db = getFirestore(app);
 const brands = ["Burn", "Monster", "Battery", "Red Bull"];
 const yearlyGoal = 365;
 
-let currentStats = null;
-let statsRef = null;
-
-/* ===== AUTH ===== */
+let statsRef;
+let currentStats;
 
 document.addEventListener("DOMContentLoaded", () => {
 
@@ -112,7 +147,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   window.register = async () => {
     errorBox.innerText = "";
-
     if (passwordInput.value.length < 6) {
       errorBox.innerText = "Passord må være minst 6 tegn.";
       return;
@@ -127,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
         yearlyGoal: 365
       });
 
-    } catch (error) {
+    } catch {
       errorBox.innerText = "Registrering feilet.";
     }
   };
@@ -148,14 +182,13 @@ document.addEventListener("DOMContentLoaded", () => {
   onAuthStateChanged(auth, async (user) => {
     const authBox = document.getElementById("authBox");
     const appBox = document.getElementById("app");
-    const welcomeText = document.getElementById("welcomeText");
 
     if (!authBox || !appBox) return;
 
     if (user) {
       authBox.classList.add("hidden");
       appBox.classList.remove("hidden");
-      welcomeText.innerText = "Innlogget som: " + user.email;
+      document.getElementById("welcomeText").innerText = "Innlogget som: " + user.email;
       await loadStats();
     } else {
       authBox.classList.remove("hidden");
@@ -165,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 });
 
-/* ===== LOAD STATS ===== */
+/* LOAD STATS */
 
 async function loadStats() {
   const year = new Date().getFullYear();
@@ -174,15 +207,13 @@ async function loadStats() {
   const snap = await getDoc(statsRef);
 
   if (!snap.exists()) {
-    const emptyStats = {
+    currentStats = {
       userId: auth.currentUser.uid,
-      year: year,
+      year,
       total: 0,
-      byBrand: { Burn: 0, Monster: 0, Battery: 0, "Red Bull": 0 },
-      monthly: {}
+      byBrand: { Burn: 0, Monster: 0, Battery: 0, "Red Bull": 0 }
     };
-    await setDoc(statsRef, emptyStats);
-    currentStats = emptyStats;
+    await setDoc(statsRef, currentStats);
   } else {
     currentStats = snap.data();
   }
@@ -191,22 +222,22 @@ async function loadStats() {
   updateProgress();
 }
 
-/* ===== RENDER ===== */
+/* RENDER */
 
 function renderBrands() {
   const container = document.getElementById("brands");
   container.innerHTML = "";
 
   brands.forEach(brand => {
-    const count = currentStats.byBrand?.[brand] || 0;
+    const count = currentStats.byBrand[brand] || 0;
 
     const div = document.createElement("div");
+    div.className = "brand";
     div.innerHTML = `
       <h3>${brand}</h3>
       <p>Antall: <span id="count_${brand}">${count}</span></p>
-      <button onclick="addDrink('${brand}')">+1</button>
-      <button onclick="removeDrink('${brand}')">-1</button>
-      <hr>
+      <button class="primary" onclick="addDrink('${brand}')">+</button>
+      <button class="danger" onclick="removeDrink('${brand}')">-</button>
     `;
     container.appendChild(div);
   });
@@ -220,20 +251,9 @@ function updateProgress() {
   bar.innerText = total + " stk";
 }
 
-/* ===== ADD ===== */
+/* ADD */
 
 window.addDrink = async (brand) => {
-  const now = new Date();
-
-  await addDoc(collection(db, "drinks"), {
-    userId: auth.currentUser.uid,
-    brand,
-    createdAt: serverTimestamp(),
-    year: now.getFullYear(),
-    month: now.getMonth() + 1,
-    day: now.getDate()
-  });
-
   await updateDoc(statsRef, {
     total: increment(1),
     [`byBrand.${brand}`]: increment(1)
@@ -245,23 +265,10 @@ window.addDrink = async (brand) => {
   updateProgress();
 };
 
-/* ===== REMOVE ===== */
+/* REMOVE */
 
 window.removeDrink = async (brand) => {
-
-  const q = query(
-    collection(db, "drinks"),
-    where("userId", "==", auth.currentUser.uid),
-    where("brand", "==", brand),
-    orderBy("createdAt", "desc"),
-    limit(1)
-  );
-
-  const snap = await getDocs(q);
-  if (snap.empty) return;
-
-  const drinkDoc = snap.docs[0];
-  await deleteDoc(drinkDoc.ref);
+  if (currentStats.byBrand[brand] <= 0) return;
 
   await updateDoc(statsRef, {
     total: increment(-1),
@@ -273,7 +280,6 @@ window.removeDrink = async (brand) => {
   document.getElementById("count_" + brand).innerText = currentStats.byBrand[brand];
   updateProgress();
 };
-
 </script>
 
 </body>
