@@ -170,16 +170,27 @@ document.addEventListener("DOMContentLoaded", () => {
   window.logout = async () => await signOut(auth);
 
   onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      authBox.classList.add("hidden");
-      app.classList.remove("hidden");
+
+  const authBox = document.getElementById("authBox");
+  const appBox = document.getElementById("app");
+  const welcomeText = document.getElementById("welcomeText");
+
+  if (!authBox || !appBox) {
+    console.error("authBox eller app mangler i HTML");
+    return;
+  }
+
+  if (user) {
+    authBox.classList.add("hidden");
+    appBox.classList.remove("hidden");
+    if (welcomeText) {
       welcomeText.innerText = "Innlogget som: " + user.email;
-      await loadStats();
-    } else {
-      authBox.classList.remove("hidden");
-      app.classList.add("hidden");
     }
-  });
+    await loadStats();
+  } else {
+    authBox.classList.remove("hidden");
+    appBox.classList.add("hidden");
+  }
 });
 
 async function loadStats(){
