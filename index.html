@@ -8,26 +8,27 @@
 <style>
 body {
   margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
-  color: white;
+  font-family: 'Inter', sans-serif;
+  background: radial-gradient(circle at top, #1b2a33, #0e1a20 70%);
+  color: #f2f2f2;
   text-align: center;
 }
 
 h1 {
-  margin-top: 30px;
-  font-size: 32px;
-  color: #00ffcc;
+  margin-top: 40px;
+  font-size: 34px;
+  font-weight: 600;
+  color: #00ffc3;
 }
 
 .card {
-  background: rgba(255,255,255,0.05);
-  backdrop-filter: blur(15px);
-  border-radius: 20px;
-  padding: 25px;
-  margin: 20px auto;
-  max-width: 500px;
-  box-shadow: 0 0 30px rgba(0,255,200,0.1);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 30px;
+  margin: 30px auto;
+  max-width: 650px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
 }
 
 .hidden { display:none; }
@@ -36,52 +37,66 @@ input {
   width: 90%;
   padding: 12px;
   margin: 8px 0;
-  border-radius: 10px;
+  border-radius: 12px;
   border: none;
-  outline: none;
 }
 
 button {
   padding: 8px 14px;
-  margin: 5px;
-  border-radius: 10px;
+  border-radius: 12px;
   border: none;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
+  transition: 0.2s ease;
 }
 
-.primary { background:#00ffcc; color:black; }
-.danger { background:#ff3b3b; color:white; }
+.primary { background:#00ffc3; color:#0e1a20; }
+.primary:hover { background:#00e0aa; }
+
+.danger { background:#ff4c4c; }
+.danger:hover { background:#e03b3b; }
 
 .brand-title {
-  font-size: 20px;
   margin-top: 15px;
-  cursor:pointer;
-  background: rgba(255,255,255,0.08);
-  padding:10px;
-  border-radius:12px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.06);
+  cursor: pointer;
+  font-weight: 600;
 }
 
 .flavor-box {
-  margin: 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  margin: 6px 0;
+  background: rgba(255,255,255,0.05);
+  border-radius: 14px;
 }
 
-.progress-container {
-  background: rgba(255,255,255,0.1);
-  border-radius: 20px;
-  height: 25px;
+.progress-wrapper {
+  margin-top: 25px;
+}
+
+.progress-track {
+  background: rgba(255,255,255,0.08);
+  border-radius: 50px;
+  height: 18px;
   overflow: hidden;
-  margin-top: 15px;
 }
 
-.progress-bar {
+.progress-fill {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg,#00ffcc,#00cc99);
+  background: linear-gradient(90deg,#00ffc3,#00aaff);
   transition: width 0.4s ease;
-  font-weight:bold;
-  color:black;
-  line-height:25px;
+}
+
+.progress-label {
+  margin-top: 8px;
+  font-size: 14px;
+  color: #aaa;
 }
 </style>
 </head>
@@ -94,8 +109,7 @@ button {
   <h2>Logg inn</h2>
   <input type="email" id="email" placeholder="E-post">
   <input type="password" id="password" placeholder="Passord (minst 6 tegn)">
-  <small>Passord må være minst 6 tegn</small>
-  <div id="errorMsg" style="color:#ff7070;margin-top:10px;"></div>
+  <div id="errorMsg" style="color:#ff7070;"></div>
   <button class="primary" onclick="login()">Logg inn</button>
   <p>Har du ikke konto?</p>
   <button onclick="register()">Opprett konto</button>
@@ -108,9 +122,11 @@ button {
 
     <div id="brands"></div>
 
-    <h3>Total i år</h3>
-    <div class="progress-container">
-      <div class="progress-bar" id="progressBar">0</div>
+    <div class="progress-wrapper">
+      <div class="progress-track">
+        <div class="progress-fill" id="progressBar"></div>
+      </div>
+      <div class="progress-label" id="progressLabel">0 / 365</div>
     </div>
   </div>
 </div>
@@ -120,110 +136,45 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* LIM INN DIN FIREBASE CONFIG HER */
 const firebaseConfig = {
   apiKey: "AIzaSyCUpqERB_sfUCetgxWwkynRHBUzKcVdl_8",
   authDomain: "energidrikk-teller.firebaseapp.com",
   projectId: "energidrikk-teller",
   storageBucket: "energidrikk-teller.firebasestorage.app",
   messagingSenderId: "159436464618",
-  appId: "1:159436464618:web:0ffaff4f0d9e87ddc25293",
-  measurementId: "G-E2M78BPZ26"
+  appId: "1:159436464618:web:0ffaff4f0d9e87ddc25293"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+const appFirebase = initializeApp(firebaseConfig);
+const auth = getAuth(appFirebase);
+const db = getFirestore(appFirebase);
 
 const drinks = {
-
   "Monster": [
-    "Monster Original",
-    "Monster Original Sukkerfri",
-    "Monster Lewis Hamilton",
-    "Monster Lewis Hamilton Sukkerfri",
-    "Monster Lando Norris Sukkerfri",
-    "Monster Ultra",
-    "Monster Ultra Paradise",
-    "Monster Ultra Watermelon",
-    "Monster Ultra Gold",
-    "Monster Ultra Fiesta",
-    "Monster Ultra Rosa",
-    "Monster Ultra Black",
-    "Monster Ultra Peachy Keen",
-    "Monster Ultra Strawberry Dreams",
-    "Monster Mango Loco",
-    "Monster Pipeline Punch",
-    "Monster Monarch",
-    "Monster Aussie Lemonade",
-    "Monster Bad Apple",
-    "Monster Rio Punch"
+    "Original","Original Sukkerfri","Lewis Hamilton","Lewis Hamilton Sukkerfri",
+    "Lando Norris Sukkerfri","Ultra","Ultra Paradise","Ultra Watermelon",
+    "Ultra Gold","Ultra Fiesta","Ultra Rosa","Ultra Black",
+    "Ultra Peachy Keen","Ultra Strawberry Dreams","Mango Loco",
+    "Pipeline Punch","Monarch","Aussie Lemonade","Bad Apple","Rio Punch"
   ],
-
   "Red Bull": [
-    "Redbull Original",
-    "Redbull Sukkerfri",
-    "Redbull Yellow Edition Tropisk",
-    "Redbull Blue Edition Blåbær",
-    "Redbull Purple Edition Skogsbær",
-    "Redbull Pink Edition",
-    "Redbull Lilac Edition Lavender",
-    "Redbull Peach Edition",
-    "Redbull Spring Edition"
+    "Original","Sukkerfri","Yellow Edition Tropisk","Blue Edition Blåbær",
+    "Purple Edition Skogsbær","Pink Edition","Lilac Edition Lavender",
+    "Peach Edition","Spring Edition"
   ],
-
   "Burn": [
-    "Burn Original",
-    "Burn Apple Kiwi",
-    "Burn Fruit Punch",
-    "Burn White Citrus"
+    "Original","Apple Kiwi","Fruit Punch","White Citrus"
   ],
-
   "Battery": [
-    "Battery Original",
-    "Battery Peachberry",
-    "Battery Peach + Raspberry",
-    "Battery Fresh",
-    "Battery Blueberry",
-    "Battery Whirl",
-    "Battery Fresh Exotic Fruits",
-    "Battery No Calorie"
+    "Original","Peachberry","Fresh","Blueberry",
+    "Whirl","Fresh Exotic Fruits","No Calorie"
   ]
-
 };
 
 let statsRef;
 let currentStats = { total:0, byFlavor:{} };
 
-document.addEventListener("DOMContentLoaded", () => {
-
-  window.login = async () => {
-    try {
-      await signInWithEmailAndPassword(auth, email.value, password.value);
-    } catch {
-      errorMsg.innerText = "Feil e-post eller passord.";
-    }
-  };
-
-  window.register = async () => {
-    if (password.value.length < 6) {
-      errorMsg.innerText = "Passord må være minst 6 tegn.";
-      return;
-    }
-    try {
-      await createUserWithEmailAndPassword(auth, email.value, password.value);
-    } catch {
-      errorMsg.innerText = "Registrering feilet.";
-    }
-  };
-
-  window.logout = async () => {
-    await signOut(auth);
-  };
-
-});
-
-  window.login = async () => {
+window.login = async () => {
   try {
     await signInWithEmailAndPassword(auth, email.value, password.value);
   } catch {
@@ -243,28 +194,16 @@ window.register = async () => {
   }
 };
 
-window.logout = async () => {
-  await signOut(auth);
-};
+window.logout = async () => await signOut(auth);
 
-  window.logout = async () => await signOut(auth);
-
-  onAuthStateChanged(auth, async (user) => {
-
+onAuthStateChanged(auth, async (user) => {
   const authBox = document.getElementById("authBox");
   const appBox = document.getElementById("app");
-  const welcomeText = document.getElementById("welcomeText");
-
-  if (!authBox || !appBox) return;
 
   if (user) {
     authBox.classList.add("hidden");
     appBox.classList.remove("hidden");
-
-    if (welcomeText) {
-      welcomeText.innerText = "Innlogget som: " + user.email;
-    }
-
+    welcomeText.innerText = "Innlogget som: " + user.email;
     await loadStats();
   } else {
     authBox.classList.remove("hidden");
@@ -288,8 +227,8 @@ async function loadStats(){
 }
 
 function renderBrands(){
-  const brandsContainer = document.getElementById("brands");
-  brandsContainer.innerHTML = "";
+  const container = document.getElementById("brands");
+  container.innerHTML = "";
 
   Object.keys(drinks).forEach(brand=>{
     const title=document.createElement("div");
@@ -303,30 +242,33 @@ function renderBrands(){
 
     drinks[brand].forEach(flavor=>{
       const key=brand+"_"+flavor;
-      const count=currentStats.byFlavor?.[key]||0;
+      const count=currentStats.byFlavor[key]||0;
 
       const flavorDiv=document.createElement("div");
       flavorDiv.className="flavor-box";
+
       flavorDiv.innerHTML=`
-        ${flavor}
-        <button class="primary" onclick="addDrink('${key}')">+</button>
-        <button class="danger" onclick="removeDrink('${key}')">-</button>
-        <span id="count_${key}">${count}</span>
+        <span>${flavor}</span>
+        <div>
+          <button class="primary" onclick="addDrink('${key}')">+</button>
+          <button class="danger" onclick="removeDrink('${key}')">-</button>
+          <span id="count_${key}">${count}</span>
+        </div>
       `;
 
       flavorContainer.appendChild(flavorDiv);
     });
 
-    brandsContainer.appendChild(title);
-    brandsContainer.appendChild(flavorContainer);
+    container.appendChild(title);
+    container.appendChild(flavorContainer);
   });
 }
 
 function updateProgress(){
-  const percent=Math.min((currentStats.total/365)*100,100);
-  const progressBar=document.getElementById("progressBar");
+  const total = currentStats.total || 0;
+  const percent=Math.min((total/365)*100,100);
   progressBar.style.width=percent+"%";
-  progressBar.innerText=currentStats.total+" stk";
+  progressLabel.innerText=total+" / 365";
 }
 
 window.addDrink=async(key)=>{
@@ -334,29 +276,23 @@ window.addDrink=async(key)=>{
     total:increment(1),
     [`byFlavor.${key}`]:increment(1)
   });
-
   currentStats.total++;
   currentStats.byFlavor[key]=(currentStats.byFlavor[key]||0)+1;
-
-  document.getElementById("count_"+key).innerText=currentStats.byFlavor[key];
+  renderBrands();
   updateProgress();
 };
 
 window.removeDrink=async(key)=>{
   if(!currentStats.byFlavor[key]) return;
-
   await updateDoc(statsRef,{
     total:increment(-1),
     [`byFlavor.${key}`]:increment(-1)
   });
-
   currentStats.total--;
   currentStats.byFlavor[key]--;
-
-  document.getElementById("count_"+key).innerText=currentStats.byFlavor[key];
+  renderBrands();
   updateProgress();
 };
-
 </script>
 
 </body>
