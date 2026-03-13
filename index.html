@@ -202,88 +202,14 @@ const drinks = {
 let statsRef;
 let currentStats = { total:0, byFlavor:{} };
 
-/* ---------------- DAILY CHAOS (REVERSERBAR) ---------------- */
-
-const sideEffects = [
-  {focus:7,sleep:-5,shake:3,heart:2,text:"Du kan nå høre WiFi-signalet."},
-  {focus:10,sleep:-8,shake:5,heart:4,text:"Du åpnet 12 nye faner."},
-  {focus:5,sleep:-3,shake:2,heart:1,text:"Produktivitet øker mistenkelig."},
-  {focus:12,sleep:-10,shake:8,heart:6,text:"Overclock mode aktivert."}
-];
-
-let dailyStats = {};
-
-function loadDailyStats(){
-  const today = new Date().toISOString().split("T")[0];
-  const stored = JSON.parse(localStorage.getItem("dailyStats"));
-
-  if (!stored || stored.date !== today){
-    dailyStats = { date: today, effects: [] };
-  } else {
-    dailyStats = stored;
-  }
-
-  recalcDailyStats();
-}
-
-function saveDailyStats(){
-  localStorage.setItem("dailyStats", JSON.stringify(dailyStats));
-}
-
-function recalcDailyStats(){
-  let focus = 0;
-  let sleep = 100;
-  let shake = 0;
-  let heart = 0;
-
-  dailyStats.effects.forEach(e=>{
-    focus += e.focus;
-    sleep += e.sleep;
-    shake += e.shake;
-    heart += e.heart;
-  });
-
-  sleep = Math.max(0, sleep);
-
-  document.getElementById("focusStat").innerText = focus;
-  document.getElementById("sleepStat").innerText = sleep;
-  document.getElementById("shakeStat").innerText = shake;
-  document.getElementById("heartStat").innerText = heart;
-
-  saveDailyStats();
-}
-
-function applyRandomEffect(){
-  const effect = sideEffects[Math.floor(Math.random()*sideEffects.length)];
-  dailyStats.effects.push(effect);
-  recalcDailyStats();
-
-  const toast = document.getElementById("effectToast");
-  toast.innerHTML = `
-    ⚡ +${effect.focus} Fokus | ${effect.sleep} Søvn<br>
-    🤝 +${effect.shake} Skjelving | 💓 +${effect.heart} Puls<br>
-    <span style="color:#aaa;">${effect.text}</span>
-  `;
-  toast.style.opacity = 1;
-  setTimeout(()=> toast.style.opacity = 0, 3000);
-}
-
-function removeLastEffect(){
-  if(dailyStats.effects.length === 0) return;
-  dailyStats.effects.pop();
-  recalcDailyStats();
-
-  const toast = document.getElementById("effectToast");
-  toast.innerHTML = "⏪ Siste bivirkning reversert.";
-  toast.style.opacity = 1;
-  setTimeout(()=> toast.style.opacity = 0, 2000);
-}
-
 /* ---------------- AUTH ---------------- */
 
 window.login = async () => {
-  try { await signInWithEmailAndPassword(auth, email.value, password.value); }
-  catch { errorMsg.innerText = "Feil e-post eller passord."; }
+  try { 
+    await signInWithEmailAndPassword(auth, email.value, password.value); 
+  } catch {
+    errorMsg.innerText = "Feil e-post eller passord.";
+  }
 };
 
 window.register = async () => {
@@ -291,22 +217,27 @@ window.register = async () => {
     errorMsg.innerText = "Passord må være minst 6 tegn.";
     return;
   }
-  try { await createUserWithEmailAndPassword(auth, email.value, password.value); }
-  catch { errorMsg.innerText = "Registrering feilet."; }
+  try { 
+    await createUserWithEmailAndPassword(auth, email.value, password.value); 
+  } catch {
+    errorMsg.innerText = "Registrering feilet.";
+  }
 };
 
 window.logout = async () => await signOut(auth);
 
 onAuthStateChanged(auth, async (user)=>{
+  const authBox = document.getElementById("authBox");
+  const appBox = document.getElementById("app");
+
   if(user){
     authBox.classList.add("hidden");
-    app.classList.remove("hidden");
+    appBox.classList.remove("hidden");
     welcomeText.innerText = "Innlogget som: " + user.email;
     await loadStats();
-    loadDailyStats();
   } else {
     authBox.classList.remove("hidden");
-    app.classList.add("hidden");
+    appBox.classList.add("hidden");
   }
 });
 
@@ -320,7 +251,10 @@ async function loadStats(){
   if (!snap.exists()){
     currentStats = { total:0, byFlavor:{} };
     await setDoc(statsRef,currentStats);
-  } else currentStats = snap.data();
+  } else {
+    currentStats = snap.data();
+    if(!currentStats.byFlavor) currentStats.byFlavor = {};
+  }
 
   renderBrands();
   updateProgress();
@@ -367,7 +301,7 @@ function updateProgress(){
   document.getElementById("progressLabel").innerText = currentStats.total + " stk totalt";
 }
 
-/* ---------------- GLOBAL FUNCTIONS ---------------- */
+/* ---------------- GLOBAL BUTTON FUNCTIONS ---------------- */
 
 async function addDrink(key){
   await updateDoc(statsRef,{
@@ -380,7 +314,6 @@ async function addDrink(key){
 
   renderBrands();
   updateProgress();
-  applyRandomEffect();
 }
 
 async function removeDrink(key){
@@ -396,7 +329,6 @@ async function removeDrink(key){
 
   renderBrands();
   updateProgress();
-  removeLastEffect();
 }
 
 window.addDrink = addDrink;
