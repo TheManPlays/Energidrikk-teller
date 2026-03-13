@@ -1,108 +1,33 @@
-<!DOCTYPE html>
-<html lang="no">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Energidrikkteller</title>
-
-<style>
-body {
-    font-family: Arial, sans-serif;
-    background: #111;
-    color: white;
-    text-align: center;
-    margin: 0;
-}
-
-.container {
-    max-width: 600px;
-    margin: auto;
-    padding: 20px;
-}
-
-h1 { color: #00ff88; }
-
-input {
-    padding: 10px;
-    margin: 5px;
-    border-radius: 6px;
-    border: none;
-    width: 80%;
-}
-
-button {
-    padding: 10px 15px;
-    margin: 5px;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-}
-
-.primary { background: #00c853; color: white; }
-.danger { background: #d50000; color: white; }
-
-.brand-box {
-    background: #1e1e1e;
-    padding: 15px;
-    margin: 10px 0;
-    border-radius: 10px;
-}
-
-.progress-container {
-    background: #333;
-    border-radius: 20px;
-    margin-top: 20px;
-    height: 25px;
-    overflow: hidden;
-}
-
-.progress-bar {
-    height: 100%;
-    width: 0%;
-    background: linear-gradient(90deg, #00ff88, #00c853);
-    line-height: 25px;
-    font-weight: bold;
-    color: black;
-}
-
-.hidden { display: none; }
-</style>
-</head>
-<body>
-
-<div class="container">
-<h1>Energidrikkteller</h1>
-
-<div id="authBox">
-    <h2>Logg inn</h2>
-    <input type="email" id="email" placeholder="E-post">
-    <input type="password" id="password" placeholder="Passord">
-    <br>
-    <button class="primary" onclick="login()">Logg inn</button>
-    <button onclick="register()">Registrer</button>
-</div>
-
-<div id="app" class="hidden">
-    <h2 id="welcomeText"></h2>
-    <button class="danger" onclick="logout()">Logg ut</button>
-
-    <div id="brands"></div>
-
-    <h3>Total i år</h3>
-    <div class="progress-container">
-        <div class="progress-bar" id="progressBar">0</div>
-    </div>
-</div>
-
-</div>
-
-<!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-/* 🔥 LIM INN DIN FIREBASE CONFIG HER */
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  addDoc, 
+  deleteDoc,
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  getDocs,
+  serverTimestamp,
+  increment 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+
+/* 🔥 LIM INN DIN FIREBASE CONFIG */
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -118,116 +43,195 @@ const db = getFirestore(app);
 
 const brands = ["Burn", "Monster", "Battery", "Red Bull"];
 const yearlyGoal = 365;
-let userData = {};
-let userRef = null;
 
-function getYear() {
-    return new Date().getFullYear();
+let currentUser = null;
+let currentStats = null;
+let statsRef = null;
+
+/* =========================
+   AUTH
+========================= */
+
+window.register = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+  // Opprett brukerprofil
+  await setDoc(doc(db, "users", cred.user.uid), {
+    email: email,
+    createdAt: serverTimestamp(),
+    yearlyGoal: 365
+  });
+};
+
+window.login = async () => {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+  await signInWithEmailAndPassword(auth, email, password);
+};
+
+window.logout = async () => {
+  await signOut(auth);
+};
+
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    currentUser = user;
+    document.getElementById("authBox").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+    document.getElementById("welcomeText").innerText = "Innlogget som: " + user.email;
+    await loadStats();
+  } else {
+    document.getElementById("authBox").classList.remove("hidden");
+    document.getElementById("app").classList.add("hidden");
+  }
+});
+
+
+/* =========================
+   LOAD / INIT STATS
+========================= */
+
+async function loadStats() {
+  const year = new Date().getFullYear();
+  statsRef = doc(db, "stats", currentUser.uid + "_" + year);
+
+  const snap = await getDoc(statsRef);
+
+  if (!snap.exists()) {
+    // Opprett tom stats
+    const emptyStats = {
+      userId: currentUser.uid,
+      year: year,
+      total: 0,
+      byBrand: {
+        "Burn": 0,
+        "Monster": 0,
+        "Battery": 0,
+        "Red Bull": 0
+      },
+      monthly: {}
+    };
+
+    await setDoc(statsRef, emptyStats);
+    currentStats = emptyStats;
+  } else {
+    currentStats = snap.data();
+  }
+
+  renderBrands();
+  updateProgress();
 }
 
-async function loadUserData(uid) {
-    userRef = doc(db, "users", uid);
-    const snap = await getDoc(userRef);
 
-    if (snap.exists()) {
-        userData = snap.data();
-        if (userData.year !== getYear()) {
-            userData = { year: getYear(), counts: {} };
-        }
-    } else {
-        userData = { year: getYear(), counts: {} };
-    }
-
-    brands.forEach(b => {
-        if (!userData.counts[b]) userData.counts[b] = 0;
-    });
-
-    await setDoc(userRef, userData);
-    renderBrands();
-    updateProgress();
-}
-
-async function saveData() {
-    await updateDoc(userRef, userData);
-}
+/* =========================
+   RENDER UI
+========================= */
 
 function renderBrands() {
-    const container = document.getElementById("brands");
-    container.innerHTML = "";
+  const container = document.getElementById("brands");
+  container.innerHTML = "";
 
-    brands.forEach(brand => {
-        const div = document.createElement("div");
-        div.className = "brand-box";
-        div.innerHTML = `
-            <h3>${brand}</h3>
-            <p>Antall: <span id="count_${brand}">${userData.counts[brand]}</span></p>
-            <button class="primary" onclick="addDrink('${brand}')">+1</button>
-            <button class="danger" onclick="removeDrink('${brand}')">-1</button>
-        `;
-        container.appendChild(div);
-    });
-}
+  brands.forEach(brand => {
+    const count = currentStats.byBrand?.[brand] || 0;
 
-window.addDrink = async (brand) => {
-    userData.counts[brand]++;
-    await saveData();
-    document.getElementById("count_" + brand).innerText = userData.counts[brand];
-    updateProgress();
-}
-
-window.removeDrink = async (brand) => {
-    if (userData.counts[brand] > 0) {
-        userData.counts[brand]--;
-        await saveData();
-        document.getElementById("count_" + brand).innerText = userData.counts[brand];
-        updateProgress();
-    }
+    const div = document.createElement("div");
+    div.className = "brand-box";
+    div.innerHTML = `
+      <h3>${brand}</h3>
+      <p>Antall: <span id="count_${brand}">${count}</span></p>
+      <button onclick="addDrink('${brand}')">+1</button>
+      <button onclick="removeDrink('${brand}')">-1</button>
+    `;
+    container.appendChild(div);
+  });
 }
 
 function updateProgress() {
-    const total = Object.values(userData.counts).reduce((a,b)=>a+b,0);
-    const percent = Math.min((total/yearlyGoal)*100,100);
-    const bar = document.getElementById("progressBar");
-    bar.style.width = percent + "%";
-    bar.innerText = total + " stk";
+  const total = currentStats.total || 0;
+  const percent = Math.min((total / yearlyGoal) * 100, 100);
+
+  const bar = document.getElementById("progressBar");
+  bar.style.width = percent + "%";
+  bar.innerText = total + " stk";
 }
 
-window.register = async () => {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    try {
-        await createUserWithEmailAndPassword(auth, email, password);
-    } catch (e) {
-        alert(e.message);
-    }
-}
 
-window.login = async () => {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-    } catch (e) {
-        alert(e.message);
-    }
-}
+/* =========================
+   ADD DRINK
+========================= */
 
-window.logout = async () => {
-    await signOut(auth);
-}
+window.addDrink = async (brand) => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
 
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        document.getElementById("authBox").classList.add("hidden");
-        document.getElementById("app").classList.remove("hidden");
-        document.getElementById("welcomeText").innerText = "Innlogget som: " + user.email;
-        await loadUserData(user.uid);
-    } else {
-        document.getElementById("authBox").classList.remove("hidden");
-        document.getElementById("app").classList.add("hidden");
-    }
-});
+  // 1️⃣ Lag drink-event
+  await addDoc(collection(db, "drinks"), {
+    userId: currentUser.uid,
+    brand: brand,
+    createdAt: serverTimestamp(),
+    year: year,
+    month: month,
+    day: day
+  });
+
+  // 2️⃣ Oppdater stats
+  await updateDoc(statsRef, {
+    total: increment(1),
+    [`byBrand.${brand}`]: increment(1),
+    [`monthly.${month}`]: increment(1)
+  });
+
+  // 3️⃣ Oppdater lokalt
+  currentStats.total++;
+  currentStats.byBrand[brand]++;
+  currentStats.monthly[month] = (currentStats.monthly[month] || 0) + 1;
+
+  document.getElementById("count_" + brand).innerText = currentStats.byBrand[brand];
+  updateProgress();
+};
+
+
+/* =========================
+   REMOVE DRINK (sletter siste)
+========================= */
+
+window.removeDrink = async (brand) => {
+
+  const q = query(
+    collection(db, "drinks"),
+    where("userId", "==", currentUser.uid),
+    where("brand", "==", brand),
+    orderBy("createdAt", "desc"),
+    limit(1)
+  );
+
+  const snap = await getDocs(q);
+
+  if (snap.empty) return;
+
+  const docToDelete = snap.docs[0];
+  const data = docToDelete.data();
+
+  await deleteDoc(doc(db, "drinks", docToDelete.id));
+
+  await updateDoc(statsRef, {
+    total: increment(-1),
+    [`byBrand.${brand}`]: increment(-1),
+    [`monthly.${data.month}`]: increment(-1)
+  });
+
+  // Oppdater lokalt
+  currentStats.total--;
+  currentStats.byBrand[brand]--;
+  currentStats.monthly[data.month]--;
+
+  document.getElementById("count_" + brand).innerText = currentStats.byBrand[brand];
+  updateProgress();
+};
+
 </script>
-
-</body>
-</html>
