@@ -147,6 +147,14 @@ let currentStats = { total:0, byFlavor:{} };
 
 document.addEventListener("DOMContentLoaded", () => {
 
+  window.login = async () => {
+    try {
+      await signInWithEmailAndPassword(auth, email.value, password.value);
+    } catch {
+      errorMsg.innerText = "Feil e-post eller passord.";
+    }
+  };
+
   window.register = async () => {
     if (password.value.length < 6) {
       errorMsg.innerText = "Passord må være minst 6 tegn.";
@@ -158,7 +166,12 @@ document.addEventListener("DOMContentLoaded", () => {
       errorMsg.innerText = "Registrering feilet.";
     }
   };
-  });
+
+  window.logout = async () => {
+    await signOut(auth);
+  };
+
+});
 
   window.login = async () => {
   try {
@@ -192,17 +205,16 @@ window.logout = async () => {
   const appBox = document.getElementById("app");
   const welcomeText = document.getElementById("welcomeText");
 
-  if (!authBox || !appBox) {
-    console.error("authBox eller app mangler i HTML");
-    return;
-  }
+  if (!authBox || !appBox) return;
 
   if (user) {
     authBox.classList.add("hidden");
     appBox.classList.remove("hidden");
+
     if (welcomeText) {
       welcomeText.innerText = "Innlogget som: " + user.email;
     }
+
     await loadStats();
   } else {
     authBox.classList.remove("hidden");
